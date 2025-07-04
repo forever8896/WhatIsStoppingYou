@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 export default function Home() {
   const [phase, setPhase] = useState<'initial' | 'typing' | 'complete' | 'fadeOut' | 'money' | 'ask'>('initial');
   const [displayText, setDisplayText] = useState('');
+  const [showNavbar, setShowNavbar] = useState(false);
   const router = useRouter();
   
   const initialText = "What's Stopping You?";
@@ -42,6 +43,12 @@ export default function Home() {
       
       // Show ASK
       setPhase('ask');
+      
+      // Wait before showing navbar
+      await new Promise(resolve => setTimeout(resolve, 6000));
+      
+      // Show navbar
+      setShowNavbar(true);
     };
     
     sequence();
@@ -51,8 +58,83 @@ export default function Home() {
     router.push('/create');
   };
 
+  const handleNavClick = (path: string) => {
+    router.push(path);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center overflow-hidden relative">
+      {/* Navbar */}
+      <AnimatePresence>
+        {showNavbar && (
+          <motion.nav
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="fixed top-0 left-0 right-0 z-50 p-6"
+          >
+            <div className="flex justify-between items-center max-w-7xl mx-auto">
+              {/* Logo/Brand */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="text-2xl font-bold text-white cursor-pointer"
+                onClick={() => handleNavClick('/')}
+                style={{
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: 900,
+                }}
+              >
+                WhatsStoppingYou
+              </motion.div>
+              
+              {/* Navigation Items */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4, duration: 0.6 }}
+                className="flex items-center gap-8"
+              >
+                <motion.button
+                  onClick={() => handleNavClick('/help')}
+                  className="text-lg font-semibold text-white/80 hover:text-white transition-colors duration-300 relative group"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontWeight: 600,
+                  }}
+                >
+                  HELP
+                  <motion.div
+                    className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"
+                    whileHover={{ width: '100%' }}
+                  />
+                </motion.button>
+                
+                <motion.button
+                  onClick={() => handleNavClick('/why')}
+                  className="text-lg font-semibold text-white/80 hover:text-white transition-colors duration-300 relative group"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontWeight: 600,
+                  }}
+                >
+                  WHY
+                  <motion.div
+                    className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"
+                    whileHover={{ width: '100%' }}
+                  />
+                </motion.button>
+              </motion.div>
+            </div>
+          </motion.nav>
+        )}
+      </AnimatePresence>
+
       {/* Elegant Animated Background */}
       <div className="absolute inset-0">
         {/* Pure black base */}
