@@ -2,9 +2,9 @@
   "network": "saigon",
   "deployer": "0x1dFaB190fd1c021B490083997D0a68666F1805a2",
   "contracts": {
-    "PledgeToCreate": "0xcbCAF8943AB70ba4e0d959b8B9cFfAC30Ec13D60",
-    "SoulboundPledgeNFT": "0x1931a4F5860589F335e79c9e3b4499C91bB045d8"
+    "PledgeToCreate": "0x69814cD24A5Be9668155d4e300eAbb4260a60a97",
+    "SoulboundPledgeNFT": "0xdC33A0596a5AdE0B113dee32da13388279f6205e"
   },
-  "blockNumber": 39310428,
-  "timestamp": "2025-07-05T01:22:24.392Z"
+  "blockNumber": 39331304,
+  "timestamp": "2025-07-05T18:46:14.298Z"
 }

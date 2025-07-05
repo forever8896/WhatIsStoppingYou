@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
+import { saigon } from 'viem/chains';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 
 // Walrus API endpoints
@@ -141,6 +142,7 @@ export default function CreatePage() {
           imageUrl,
           goalInWei
         ],
+        chainId: saigon.id,
       });
       
     } catch (error) {

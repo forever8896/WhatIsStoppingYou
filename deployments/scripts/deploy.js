@@ -19,8 +19,11 @@ async function main() {
     // Deploy PledgeToCreate contract (this will also deploy SoulboundPledgeNFT)
     console.log("\nDeploying PledgeToCreate contract...");
     const PledgeToCreate = await ethers.getContractFactory("PledgeToCreate");
-    const pledgeContract = await PledgeToCreate.deploy();
-    
+    const coordinatorAddress = "0xa60c1e07fa030e4b49eb54950adb298ab94dd312";
+    const pledgeContract = await PledgeToCreate.deploy(
+      coordinatorAddress
+    );
+        
     await pledgeContract.waitForDeployment();
     const pledgeAddress = await pledgeContract.getAddress();
     console.log("PledgeToCreate deployed to:", pledgeAddress);

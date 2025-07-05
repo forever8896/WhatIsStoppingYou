@@ -7,18 +7,18 @@ import { ronin, saigon } from 'viem/chains';
 
 const config = getDefaultConfig({
     appMetadata: {
-      appName: 'My DApp',
-      appIcon: '<https://my-dapp.com/icon.png>',
-      appDescription: 'A decentralized application for Web3 enthusiasts',
-      appUrl: '<https://my-dapp.com>',
+      appName: 'WhatsStoppingYou',
+      appIcon: 'https://via.placeholder.com/256x256?text=WSY',
+      appDescription: 'A decentralized crowdfunding platform on Ronin',
+      appUrl: 'https://whatsstoppingyou.com',
     },
     keylessWalletConfig: {
-      chainId: 2020, // Ronin Mainnet
+      chainId: 2021, // Saigon Testnet
       enable: false,
       clientId: 'disabled',
     },
     walletConnectConfig: {
-      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'disabled',
     },
     coinbaseWalletConfig: {
       enable: true,

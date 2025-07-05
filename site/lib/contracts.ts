@@ -2,8 +2,9 @@ import { Address } from 'viem';
 
 // Contract addresses on Saigon testnet
 export const CONTRACTS = {
-  PLEDGE_TO_CREATE: '0xcbCAF8943AB70ba4e0d959b8B9cFfAC30Ec13D60' as Address,
-  SOULBOUND_PLEDGE_NFT: '0x1931a4F5860589F335e79c9e3b4499C91bB045d8' as Address,
+  PLEDGE_TO_CREATE: '0x69814cD24A5Be9668155d4e300eAbb4260a60a97' as Address,
+  SOULBOUND_PLEDGE_NFT: '0xdC33A0596a5AdE0B113dee32da13388279f6205e' as Address,
+  VRF_COORDINATOR: '0xa60c1e07fa030e4b49eb54950adb298ab94dd312' as Address,
 } as const;
 
 // Simplified ABI for the functions we need

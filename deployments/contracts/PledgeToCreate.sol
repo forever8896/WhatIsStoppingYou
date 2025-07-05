@@ -4,8 +4,11 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./SoulboundPledgeNFT.sol";
+import "./VRFConsumer.sol";
 
-contract PledgeToCreate is Ownable, ReentrancyGuard {
+contract PledgeToCreate is Ownable, ReentrancyGuard, VRFConsumer {
+    enum RaffleType { Campaign, Daily }
+
     struct Campaign {
         address creator;
         string title;
@@ -16,6 +19,8 @@ contract PledgeToCreate is Ownable, ReentrancyGuard {
         uint256 createdAt;
         bool withdrawn;
         bool active;
+        uint256 nextRaffleMilestone;
+        uint256 rafflePrize;
     }
 
     struct Pledge {
@@ -26,63 +31,43 @@ contract PledgeToCreate is Ownable, ReentrancyGuard {
         uint256 nftTokenId;
     }
 
-    // State variables
     mapping(uint256 => Campaign) public campaigns;
     mapping(address => Pledge[]) public userPledges;
     mapping(uint256 => address[]) public campaignPledgers;
     mapping(address => uint256) public totalPledgedByUser;
-    
+    mapping(uint256 => mapping(address => uint256)) public pledgedPerCampaign;
+    mapping(uint256 => address[]) public dailyPledgers;
+
+    mapping(bytes32 => uint256) public raffleCampaignId;
+    mapping(bytes32 => uint256) public raffleDay;
+    mapping(bytes32 => RaffleType) public raffleType;
+
     uint256 public campaignCount;
     uint256 public platformRevenue;
+    uint256 public platformProfit;
+    uint256 public dailyRafflePool;
     uint256 public totalPledged;
-    uint256 public platformFeePercentage = 500; // 5% (500 basis points)
-    
-    SoulboundPledgeNFT public nftContract;
-    
-    // Events
-    event CampaignCreated(
-        uint256 indexed campaignId,
-        address indexed creator,
-        string title,
-        uint256 goal,
-        uint256 createdAt
-    );
-    
-    event PledgeMade(
-        uint256 indexed campaignId,
-        address indexed pledger,
-        uint256 amount,
-        uint256 timestamp,
-        uint256 nftTokenId
-    );
-    
-    event CampaignWithdrawn(
-        uint256 indexed campaignId,
-        address indexed creator,
-        uint256 amount
-    );
-    
-    event RevenueDistributed(
-        uint256 totalAmount,
-        uint256 recipientCount
-    );
+    uint256 public platformFeePercentage = 500; // 5%
 
-    constructor() Ownable(msg.sender) {
-        // Deploy NFT contract
+    SoulboundPledgeNFT public nftContract;
+
+    event CampaignCreated(uint256 indexed campaignId, address indexed creator, string title, uint256 goal, uint256 createdAt);
+    event PledgeMade(uint256 indexed campaignId, address indexed pledger, uint256 amount, uint256 timestamp, uint256 nftTokenId);
+    event CampaignWithdrawn(uint256 indexed campaignId, address indexed creator, uint256 amount);
+    event CampaignRaffleRequested(uint256 indexed campaignId, bytes32 requestHash);
+    event DailyRaffleRequested(uint256 indexed day, bytes32 requestHash);
+    event CampaignRaffleWinner(uint256 indexed campaignId, address winner, uint256 prize);
+    event DailyRaffleWinner(uint256 indexed day, address winner, uint256 prize);
+
+    constructor(address _vrfCoordinator) Ownable(msg.sender) VRFConsumer(_vrfCoordinator) {
         nftContract = new SoulboundPledgeNFT(address(this));
     }
 
-    function createCampaign(
-        string memory _title,
-        string memory _description,
-        string memory _imageUrl,
-        uint256 _goal
-    ) external returns (uint256) {
+    function createCampaign(string memory _title, string memory _description, string memory _imageUrl, uint256 _goal) external returns (uint256) {
         require(_goal > 0, "Goal must be greater than 0");
         require(bytes(_title).length > 0, "Title cannot be empty");
 
         uint256 campaignId = campaignCount++;
-        
         campaigns[campaignId] = Campaign({
             creator: msg.sender,
             title: _title,
@@ -92,7 +77,9 @@ contract PledgeToCreate is Ownable, ReentrancyGuard {
             pledged: 0,
             createdAt: block.timestamp,
             withdrawn: false,
-            active: true
+            active: true,
+            nextRaffleMilestone: 10,
+            rafflePrize: 0
         });
 
         emit CampaignCreated(campaignId, msg.sender, _title, _goal, block.timestamp);
@@ -101,206 +88,132 @@ contract PledgeToCreate is Ownable, ReentrancyGuard {
 
     function pledgeToCampaign(uint256 _campaignId) external payable nonReentrant {
         require(_campaignId < campaignCount, "Campaign does not exist");
-        require(msg.value > 0, "Pledge amount must be greater than 0");
-        
+        require(msg.value > 0, "Pledge must be greater than 0");
+
         Campaign storage campaign = campaigns[_campaignId];
-        require(campaign.active, "Campaign is not active");
-        require(!campaign.withdrawn, "Campaign funds already withdrawn");
+        require(campaign.active, "Campaign inactive");
+        require(!campaign.withdrawn, "Funds withdrawn");
 
-        _processPledge(_campaignId, campaign);
-    }
-
-    function _processPledge(uint256 _campaignId, Campaign storage campaign) internal {
-        // Calculate platform fee
         uint256 platformFee = (msg.value * platformFeePercentage) / 10000;
         uint256 pledgeAmount = msg.value - platformFee;
 
-        // Update campaign and global stats
         campaign.pledged += pledgeAmount;
         platformRevenue += platformFee;
         totalPledged += pledgeAmount;
         totalPledgedByUser[msg.sender] += pledgeAmount;
+        pledgedPerCampaign[_campaignId][msg.sender] += pledgeAmount;
 
-        // Mint NFT and record pledge
-        uint256 nftTokenId = _mintPledgeNFT(_campaignId, pledgeAmount, campaign.title);
-        _recordPledge(_campaignId, pledgeAmount, nftTokenId);
-        _updateCampaignPledgers(_campaignId);
+        uint256 dailyCut = (platformFee * 30) / 100;
+        uint256 raffleCut = (platformFee * 40) / 100;
+        uint256 profitCut = (platformFee * 20) / 100;
 
-        emit PledgeMade(_campaignId, msg.sender, pledgeAmount, block.timestamp, nftTokenId);
-    }
+        dailyRafflePool += dailyCut;
+        campaign.rafflePrize += raffleCut;
+        platformProfit += profitCut;
 
-    function _mintPledgeNFT(uint256 _campaignId, uint256 _amount, string memory _title) internal returns (uint256) {
-        return nftContract.mintPledgeSBT(msg.sender, _campaignId, _amount, _title);
-    }
-
-    function _recordPledge(uint256 _campaignId, uint256 _amount, uint256 _nftTokenId) internal {
+        uint256 nftTokenId = nftContract.mintPledgeSBT(msg.sender, _campaignId, pledgeAmount, campaign.title);
         userPledges[msg.sender].push(Pledge({
             pledger: msg.sender,
             campaignId: _campaignId,
-            amount: _amount,
+            amount: pledgeAmount,
             timestamp: block.timestamp,
-            nftTokenId: _nftTokenId
+            nftTokenId: nftTokenId
         }));
-    }
 
-    function _updateCampaignPledgers(uint256 _campaignId) internal {
         address[] storage pledgers = campaignPledgers[_campaignId];
-        
-        // Check if pledger already exists
+        bool exists = false;
         for (uint256 i = 0; i < pledgers.length; i++) {
             if (pledgers[i] == msg.sender) {
-                return; // Already exists
+                exists = true;
+                break;
             }
         }
-        
-        // Add new pledger
-        pledgers.push(msg.sender);
+        if (!exists) pledgers.push(msg.sender);
+
+        uint256 currentDay = block.timestamp / 1 days;
+        dailyPledgers[currentDay].push(msg.sender);
+
+        emit PledgeMade(_campaignId, msg.sender, pledgeAmount, block.timestamp, nftTokenId);
+
+        while (campaign.pledged >= (campaign.goal * campaign.nextRaffleMilestone) / 100) {
+            _requestCampaignRaffle(_campaignId);
+            campaign.nextRaffleMilestone += 10;
+        }
     }
 
-    function withdrawCampaignFunds(uint256 _campaignId) external nonReentrant {
-        require(_campaignId < campaignCount, "Campaign does not exist");
-        
-        Campaign storage campaign = campaigns[_campaignId];
-        require(msg.sender == campaign.creator, "Only creator can withdraw");
-        require(!campaign.withdrawn, "Funds already withdrawn");
-        require(campaign.pledged >= campaign.goal, "Campaign goal not reached");
-
-        campaign.withdrawn = true;
-        uint256 amount = campaign.pledged;
-
-        (bool success, ) = payable(campaign.creator).call{value: amount}("");
-        require(success, "Transfer failed");
-
-        emit CampaignWithdrawn(_campaignId, campaign.creator, amount);
+    function _requestCampaignRaffle(uint256 _campaignId) internal {
+        bytes32 reqHash = _requestRandomness(address(this).balance, 500000, gasPrice(), msg.sender);
+        raffleType[reqHash] = RaffleType.Campaign;
+        raffleCampaignId[reqHash] = _campaignId;
+        emit CampaignRaffleRequested(_campaignId, reqHash);
     }
 
-    function distributeRevenue() external onlyOwner nonReentrant {
-        require(platformRevenue > 0, "No revenue to distribute");
-        require(totalPledged > 0, "No pledges made yet");
-
-        uint256 revenueToDistribute = platformRevenue;
-        platformRevenue = 0;
-
-        address[] memory allPledgers = getAllPledgers();
-        uint256 recipientCount = _distributeToUsers(revenueToDistribute, allPledgers);
-
-        emit RevenueDistributed(revenueToDistribute, recipientCount);
+    function drawDailyRaffle(uint256 day) external onlyOwner nonReentrant {
+        require(dailyRafflePool > 0, "No daily raffle funds");
+        bytes32 reqHash = _requestRandomness(address(this).balance, 500000, gasPrice(), msg.sender);
+        raffleType[reqHash] = RaffleType.Daily;
+        raffleDay[reqHash] = day;
+        emit DailyRaffleRequested(day, reqHash);
     }
 
-    function _distributeToUsers(uint256 _revenue, address[] memory _pledgers) internal returns (uint256) {
-        uint256 recipientCount = 0;
-        
-        for (uint256 i = 0; i < _pledgers.length; i++) {
-            address pledger = _pledgers[i];
-            uint256 userTotal = totalPledgedByUser[pledger];
-            
-            if (userTotal > 0) {
-                uint256 share = (_revenue * userTotal) / totalPledged;
-                if (share > 0) {
-                    (bool success, ) = payable(pledger).call{value: share}("");
-                    if (success) {
-                        recipientCount++;
-                    }
-                }
+    function _fulfillRandomSeed(bytes32 reqHash, uint256 randomSeed) internal override {
+        if (raffleType[reqHash] == RaffleType.Campaign) {
+            uint256 campaignId = raffleCampaignId[reqHash];
+            address[] memory pledgers = campaignPledgers[campaignId];
+            uint256 totalWeight = 0;
+            for (uint256 i = 0; i < pledgers.length; i++) {
+                totalWeight += pledgedPerCampaign[campaignId][pledgers[i]];
             }
-        }
-        
-        return recipientCount;
-    }
-
-    function getAllPledgers() public view returns (address[] memory) {
-        address[] memory tempPledgers = new address[](1000);
-        uint256 count = 0;
-
-        for (uint256 i = 0; i < campaignCount; i++) {
-            address[] memory campaignPledgersList = campaignPledgers[i];
-            count = _addUniquePledgers(campaignPledgersList, tempPledgers, count);
-        }
-
-        return _createFinalArray(tempPledgers, count);
-    }
-
-    function _addUniquePledgers(
-        address[] memory _campaignPledgers,
-        address[] memory _tempPledgers,
-        uint256 _currentCount
-    ) internal pure returns (uint256) {
-        uint256 count = _currentCount;
-        
-        for (uint256 j = 0; j < _campaignPledgers.length; j++) {
-            address pledger = _campaignPledgers[j];
-            bool exists = false;
-            
-            for (uint256 k = 0; k < count; k++) {
-                if (_tempPledgers[k] == pledger) {
-                    exists = true;
+            if (totalWeight == 0) return;
+            uint256 rand = randomSeed % totalWeight;
+            uint256 cumWeight = 0;
+            for (uint256 i = 0; i < pledgers.length; i++) {
+                cumWeight += pledgedPerCampaign[campaignId][pledgers[i]];
+                if (rand < cumWeight) {
+                    address winner = pledgers[i];
+                    uint256 prize = campaigns[campaignId].rafflePrize;
+                    campaigns[campaignId].rafflePrize = 0;
+                    (bool success, ) = payable(winner).call{value: prize}("");
+                    require(success, "Campaign raffle payout failed");
+                    emit CampaignRaffleWinner(campaignId, winner, prize);
                     break;
                 }
             }
-            
-            if (!exists && count < 1000) {
-                _tempPledgers[count] = pledger;
-                count++;
+        } else if (raffleType[reqHash] == RaffleType.Daily) {
+            uint256 day = raffleDay[reqHash];
+            address[] memory pledgers = dailyPledgers[day];
+            uint256 totalWeight = 0;
+            for (uint256 i = 0; i < pledgers.length; i++) {
+                totalWeight += totalPledgedByUser[pledgers[i]];
+            }
+            if (totalWeight == 0) return;
+            uint256 rand = randomSeed % totalWeight;
+            uint256 cumWeight = 0;
+            for (uint256 i = 0; i < pledgers.length; i++) {
+                cumWeight += totalPledgedByUser[pledgers[i]];
+                if (rand < cumWeight) {
+                    address winner = pledgers[i];
+                    uint256 prize = dailyRafflePool;
+                    dailyRafflePool = 0;
+                    (bool success, ) = payable(winner).call{value: prize}("");
+                    require(success, "Daily raffle payout failed");
+                    emit DailyRaffleWinner(day, winner, prize);
+                    break;
+                }
             }
         }
-        
-        return count;
     }
 
-    function _createFinalArray(address[] memory _tempPledgers, uint256 _count) internal pure returns (address[] memory) {
-        address[] memory pledgers = new address[](_count);
-        for (uint256 i = 0; i < _count; i++) {
-            pledgers[i] = _tempPledgers[i];
-        }
-        return pledgers;
-    }
-
-    // View functions
-    function getCampaign(uint256 _campaignId) external view returns (Campaign memory) {
-        require(_campaignId < campaignCount, "Campaign does not exist");
-        return campaigns[_campaignId];
-    }
-
-    function getUserPledges(address _user) external view returns (Pledge[] memory) {
-        return userPledges[_user];
-    }
-
-    function getCampaignPledgers(uint256 _campaignId) external view returns (address[] memory) {
-        require(_campaignId < campaignCount, "Campaign does not exist");
-        return campaignPledgers[_campaignId];
-    }
-
-    function getUserTotalPledged(address _user) external view returns (uint256) {
-        return totalPledgedByUser[_user];
-    }
-
-    function getNFTContract() external view returns (address) {
-        return address(nftContract);
-    }
-
-    // Admin functions
-    function setPlatformFeePercentage(uint256 _feePercentage) external onlyOwner {
-        require(_feePercentage <= 1000, "Fee cannot exceed 10%");
-        platformFeePercentage = _feePercentage;
-    }
-
-    function pauseCampaign(uint256 _campaignId) external onlyOwner {
-        require(_campaignId < campaignCount, "Campaign does not exist");
-        campaigns[_campaignId].active = false;
-    }
-
-    function unpauseCampaign(uint256 _campaignId) external onlyOwner {
-        require(_campaignId < campaignCount, "Campaign does not exist");
-        campaigns[_campaignId].active = true;
-    }
-
-    function emergencyWithdraw() external onlyOwner {
-        uint256 balance = address(this).balance;
-        (bool success, ) = payable(owner()).call{value: balance}("");
-        require(success, "Emergency withdraw failed");
+    function gasPrice() public view returns (uint256) {
+        return 20e9 + block.basefee * 2;
     }
 
     receive() external payable {
         platformRevenue += msg.value;
     }
-} 
+
+    function getNFTContract() external view returns (address) {
+    return address(nftContract);
+}
+
+}
