@@ -125,9 +125,9 @@ export default function WhyPage() {
                 >
                   Every day, brilliant ideas die because of one thing: funding.
                   <br />
-                  Traditional systems are slow, biased, and exclusive.
+                  Traditional crowdfunding takes 30% fees and excludes millions.
                   <br />
-                  <span className="text-purple-400 font-semibold">Crypto changes everything.</span>
+                  <span className="text-purple-400 font-semibold">Ronin makes it instant, cheap, and global.</span>
                 </motion.p>
                 <motion.div
                   className="flex justify-center"
@@ -135,7 +135,7 @@ export default function WhyPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.6 }}
                 >
-                  <div className="text-6xl">💡➡️💰</div>
+                  <div className="text-6xl">💡➡️🌐</div>
                 </motion.div>
               </motion.div>
             )}
@@ -171,9 +171,9 @@ export default function WhyPage() {
                     <p className="text-lg text-white/80 leading-relaxed">
                       You have the idea. You have the passion. You have the skills.
                       <br /><br />
-                      But banks say no. VCs want 90% equity. Friends can't help.
+                      But Kickstarter takes 30% fees. GoFundMe blocks crypto. Banks say no.
                       <br /><br />
-                      <span className="text-red-400 font-semibold">Your dream dies waiting.</span>
+                      <span className="text-red-400 font-semibold">Your dream dies in bureaucracy.</span>
                     </p>
                   </motion.div>
 
@@ -186,11 +186,11 @@ export default function WhyPage() {
                   >
                     <h3 className="text-2xl font-bold mb-4 text-green-300">The Solution</h3>
                     <p className="text-lg text-white/80 leading-relaxed">
-                      Ask the world directly. No gatekeepers. No paperwork. No discrimination.
+                      Create your campaign. Set your goal. Share your story.
                       <br /><br />
-                      Crypto makes it instant, global, and unstoppable.
+                      Supporters pledge with Ronin Wallet. No middleman. No borders.
                       <br /><br />
-                      <span className="text-green-400 font-semibold">Your dream lives.</span>
+                      <span className="text-green-400 font-semibold">Your dream goes live instantly.</span>
                     </p>
                   </motion.div>
                 </div>
@@ -252,9 +252,9 @@ export default function WhyPage() {
                   >
                     <h3 className="text-2xl font-bold mb-4 text-blue-300">The Solution</h3>
                     <p className="text-lg text-white/80 leading-relaxed">
-                      You want to build something real for your project. But you need actual money.
+                      Create a campaign for your project development. 
                       <br /><br />
-                      Ask for help. Fund development. Build utility.
+                      Your community can fund real utility. Game development. Apps. Tools.
                       <br /><br />
                       <span className="text-blue-400 font-semibold">Turn hype into substance.</span>
                     </p>
@@ -291,7 +291,7 @@ export default function WhyPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  Why Should I Donate?
+                  Why Should I Pledge?
                 </motion.h2>
                 
                 <motion.div
@@ -301,22 +301,22 @@ export default function WhyPage() {
                   transition={{ delay: 0.4 }}
                   whileHover={{ scale: 1.02 }}
                 >
-                  <div className="text-6xl mb-6">🤔</div>
+                  <div className="text-6xl mb-6">🎁</div>
                   <p className="text-xl md:text-2xl text-white/90 leading-relaxed mb-6">
                     Same reason you bought that meme coin because some influencer said 
                     <span className="text-pink-400 font-semibold"> "Big news coming"</span> 
                     in a Twitter Space.
                   </p>
                   <p className="text-lg text-white/80 leading-relaxed">
-                    You believed in someone. You took a chance. You hoped for something better.
+                    But here you get something real: a <span className="text-purple-400 font-semibold">Soulbound NFT</span> that proves you believed first.
                   </p>
                 </motion.div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {[
-                    { icon: '💰', title: 'Potential Returns', desc: 'Early support = early access' },
-                    { icon: '🌟', title: 'Be Part of History', desc: 'Fund the next big thing' },
-                    { icon: '❤️', title: 'Feel Good', desc: 'Make dreams come true' }
+                    { icon: '🏆', title: 'Soulbound NFT', desc: 'Permanent proof you supported early' },
+                    { icon: '💰', title: 'Revenue Share', desc: 'Weekly earnings from platform fees' },
+                    { icon: '🌟', title: 'Be Part of History', desc: 'Fund the next breakthrough' }
                   ].map((item, index) => (
                     <motion.div
                       key={index}
@@ -332,6 +332,20 @@ export default function WhyPage() {
                     </motion.div>
                   ))}
                 </div>
+
+                <motion.div
+                  className="bg-gradient-to-br from-indigo-900/30 to-cyan-900/30 p-6 rounded-2xl border border-indigo-500/20 text-center"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1 }}
+                >
+                  <h3 className="text-xl font-bold mb-3 text-indigo-300">The Revenue Share Pool</h3>
+                  <p className="text-white/80">
+                    Every week, platform earnings get distributed to all pledgers based on their total pledge ratio.
+                    <br />
+                    <span className="text-indigo-400 font-semibold">Your support literally pays you back.</span>
+                  </p>
+                </motion.div>
               </motion.div>
             )}
 
@@ -386,17 +400,17 @@ export default function WhyPage() {
                   transition={{ delay: 0.8 }}
                 >
                   <div className="bg-red-900/20 p-6 rounded-xl border border-red-500/20">
-                    <h3 className="text-xl font-bold mb-3 text-red-300">Traditional Systems</h3>
+                    <h3 className="text-xl font-bold mb-3 text-red-300">Traditional Crowdfunding</h3>
                     <p className="text-white/80">
-                      Banks, VCs, institutions decide who gets funded.
+                      Kickstarter, GoFundMe decide what gets funded. 30% fees. Geographic restrictions.
                       <br />
-                      <span className="text-red-400">You trust their judgment.</span>
+                      <span className="text-red-400">You trust their gatekeepers.</span>
                     </p>
                   </div>
                   <div className="bg-green-900/20 p-6 rounded-xl border border-green-500/20">
                     <h3 className="text-xl font-bold mb-3 text-green-300">Our System</h3>
                     <p className="text-white/80">
-                      You decide who gets funded.
+                      You browse campaigns. You choose who to support. Your Ronin Wallet, your decision.
                       <br />
                       <span className="text-green-400">You trust your own judgment.</span>
                     </p>

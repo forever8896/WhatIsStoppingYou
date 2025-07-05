@@ -1,0 +1,23 @@
+{
+  "name": "whatsstoppingyou-contracts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:saigon": "hardhat run scripts/deploy.js --network saigon",
+    "verify:saigon": "hardhat verify --network saigon"
+  },
+  "keywords": ["smart-contracts", "ronin", "crowdfunding"],
+  "author": "",
+  "license": "MIT",
+  "description": "Smart contracts for WhatsStoppingYou crowdfunding platform",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "dotenv": "^16.0.0"
+  }
+}

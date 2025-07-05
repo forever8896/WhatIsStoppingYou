@@ -130,7 +130,7 @@ export default function Home() {
                   />
                 </motion.button>
               </motion.div>
-            </div>
+        </div>
           </motion.nav>
         )}
       </AnimatePresence>
