@@ -8,6 +8,10 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import { parseEther } from 'viem';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 
+// Walrus API endpoints
+const WALRUS_PUBLISHER = 'https://publisher.walrus-testnet.walrus.space';
+const WALRUS_AGGREGATOR = 'https://aggregator.walrus-testnet.walrus.space';
+
 export default function CreatePage() {
   const [formData, setFormData] = useState({
     title: '',
@@ -16,6 +20,10 @@ export default function CreatePage() {
     imageUrl: ''
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedBlobId, setUploadedBlobId] = useState<string>('');
+  const [uploadError, setUploadError] = useState<string>('');
   const router = useRouter();
   const { isConnected, address } = useAccount();
   
@@ -27,6 +35,84 @@ export default function CreatePage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadError('File size must be less than 10MB');
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        setUploadError('Please select an image file');
+        return;
+      }
+      
+      setSelectedFile(file);
+      setUploadError('');
+      setUploadedBlobId('');
+      setFormData(prev => ({ ...prev, imageUrl: '' }));
+    }
+  };
+
+  const uploadToWalrus = async () => {
+    if (!selectedFile) return;
+    
+    setIsUploadingImage(true);
+    setUploadError('');
+    
+    try {
+      const response = await fetch(`${WALRUS_PUBLISHER}/v1/blobs`, {
+        method: 'PUT',
+        body: selectedFile,
+        headers: {
+          'Content-Type': selectedFile.type,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Walrus upload response:', result);
+      
+      // Extract blob ID from response
+      let blobId = '';
+      if (result.newlyCreated?.blobObject?.blobId) {
+        blobId = result.newlyCreated.blobObject.blobId;
+      } else if (result.alreadyCertified?.blobId) {
+        blobId = result.alreadyCertified.blobId;
+      }
+      
+      if (!blobId) {
+        throw new Error('No blob ID found in response');
+      }
+      
+      setUploadedBlobId(blobId);
+      const imageUrl = `${WALRUS_AGGREGATOR}/v1/blobs/${blobId}`;
+      console.log('Generated image URL:', imageUrl);
+      
+      // Test if the image is immediately available
+      try {
+        const testResponse = await fetch(imageUrl, { method: 'HEAD' });
+        console.log('Image availability test:', testResponse.status);
+      } catch (error) {
+        console.warn('Image not immediately available, but this is normal for Walrus');
+      }
+      
+      setFormData(prev => ({ ...prev, imageUrl }));
+      
+    } catch (error) {
+      console.error('Error uploading to Walrus:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload image');
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,7 +128,7 @@ export default function CreatePage() {
       // Convert goal to wei (RON has 18 decimals)
       const goalInWei = parseEther(formData.goal);
       
-      // Use placeholder image URL if not provided
+      // Use placeholder image URL if no image uploaded
       const imageUrl = formData.imageUrl || 'https://via.placeholder.com/400x300?text=Campaign+Image';
       
       writeContract({
@@ -258,22 +344,124 @@ export default function CreatePage() {
                 </div>
               </div>
 
-              {/* Campaign Image URL */}
+              {/* Campaign Image Upload */}
               <div>
                 <label className="block text-xl font-semibold mb-4">
-                  Campaign Image URL (Optional)
+                  Campaign Image
                 </label>
-                <input
-                  type="url"
-                  name="imageUrl"
-                  value={formData.imageUrl}
-                  onChange={handleInputChange}
-                  placeholder="https://example.com/your-image.jpg"
-                  className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
-                  disabled={isPending || isConfirming}
-                />
+                
+                {/* File Input */}
+                <div className="space-y-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-2xl text-white file:bg-purple-600 file:border-0 file:rounded-lg file:px-4 file:py-2 file:text-white file:font-semibold file:mr-4 hover:file:bg-purple-700 transition-all duration-300"
+                    disabled={isPending || isConfirming || isUploadingImage}
+                  />
+                  
+                  {/* Upload Button */}
+                  {selectedFile && !uploadedBlobId && (
+                    <motion.button
+                      type="button"
+                      onClick={uploadToWalrus}
+                      disabled={isUploadingImage || isPending || isConfirming}
+                      className="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-semibold text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transition-all duration-300"
+                      whileHover={{ scale: isUploadingImage ? 1 : 1.02 }}
+                      whileTap={{ scale: isUploadingImage ? 1 : 0.98 }}
+                    >
+                      {isUploadingImage ? (
+                        <div className="flex items-center justify-center gap-3">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Uploading to Walrus...
+                        </div>
+                      ) : (
+                        'Upload Image to Walrus'
+                      )}
+                    </motion.button>
+                  )}
+                  
+                  {/* Upload Success */}
+                  {uploadedBlobId && (
+                    <div className="bg-green-900/20 border border-green-500/20 rounded-2xl p-4">
+                      <div className="text-green-400 font-semibold mb-2">
+                        ✅ Image uploaded successfully!
+                      </div>
+                      <div className="text-white/70 text-sm">
+                        Blob ID: {uploadedBlobId}
+                      </div>
+                      <div className="text-white/50 text-xs mt-2">
+                        Stored on Walrus decentralized storage
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Upload Error */}
+                  {uploadError && (
+                    <div className="bg-red-900/20 border border-red-500/20 rounded-2xl p-4">
+                      <div className="text-red-400 font-semibold mb-2">
+                        ❌ Upload failed
+                      </div>
+                      <div className="text-white/70 text-sm">
+                        {uploadError}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Image Preview */}
+                  {formData.imageUrl && (
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                      <div className="text-white/70 text-sm mb-2">Preview:</div>
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <img
+                            src={formData.imageUrl}
+                            alt="Campaign preview"
+                            className="w-full h-48 object-contain rounded-lg bg-white/10"
+                            onError={(e) => {
+                              console.error('Image failed to load:', formData.imageUrl);
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              // Show fallback message
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                            onLoad={() => {
+                              console.log('Image loaded successfully:', formData.imageUrl);
+                            }}
+                          />
+                          <div 
+                            className="hidden w-full h-48 bg-white/10 rounded-lg items-center justify-center text-white/50 text-center p-4"
+                            style={{ display: 'none' }}
+                          >
+                            <div>
+                              <div className="text-yellow-400 mb-2">⏳ Image may take a moment to load</div>
+                              <div className="text-sm">Walrus images sometimes need time to propagate across the network</div>
+                              <button 
+                                onClick={() => window.location.reload()} 
+                                className="mt-2 px-4 py-2 bg-purple-600 rounded-lg text-white text-sm hover:bg-purple-700"
+                              >
+                                Refresh Page
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-white/50 text-xs">
+                          Image URL: <a href={formData.imageUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">{formData.imageUrl}</a>
+                        </div>
+                        <div className="text-white/50 text-xs">
+                          Blob ID: {uploadedBlobId}
+                        </div>
+                        <div className="text-white/40 text-xs">
+                          💡 Tip: If image doesn't load immediately, try refreshing the page or opening the URL directly
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
                 <div className="text-white/50 text-sm mt-2">
-                  Leave empty to use a placeholder image
+                  Upload an image to represent your campaign. Max file size: 10MB
                 </div>
               </div>
 
