@@ -8,47 +8,74 @@ const publicClient = createPublicClient({
   transport: http('https://saigon-testnet.roninchain.com/rpc'),
 });
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const campaignId = parseInt(params.id);
-    console.log('API: Fetching campaign ID:', campaignId);
-    
+    const url = new URL(request.url);
+    const segments = url.pathname.split('/');
+    const idStr = segments[segments.length - 1];
+    const campaignId = parseInt(idStr);
+
     if (isNaN(campaignId) || campaignId < 0) {
-      console.log('API: Invalid campaign ID');
       return NextResponse.json({ error: 'Invalid campaign ID' }, { status: 400 });
     }
 
-    console.log('API: Calling contract at:', CONTRACTS.PLEDGE_TO_CREATE);
-    // Fetch campaign data from smart contract
-    const campaign = await publicClient.readContract({
+    const raw = await publicClient.readContract({
       address: CONTRACTS.PLEDGE_TO_CREATE,
       abi: PLEDGE_TO_CREATE_ABI,
-      functionName: 'getCampaign',
+      functionName: 'campaigns',
       args: [BigInt(campaignId)],
     });
 
-    console.log('API: Raw campaign data:', campaign);
+    console.log('API: Campaign data:', raw);
 
-    // Convert BigInt values to strings for JSON serialization
-    const serializedCampaign = {
-      creator: campaign.creator,
-      title: campaign.title,
-      description: campaign.description,
-      imageUrl: campaign.imageUrl,
-      goal: campaign.goal.toString(),
-      pledged: campaign.pledged.toString(),
-      createdAt: campaign.createdAt.toString(),
-      withdrawn: campaign.withdrawn,
-      active: campaign.active,
+    // Defensive check for struct layout
+    const [
+      creator,
+      title,
+      description,
+      imageUrl,
+      goal,
+      pledged,
+      createdAt,
+      withdrawn,
+      active,
+      nextRaffleMilestone,
+      rafflePrize,
+    ] = raw as unknown as [
+      `0x${string}`,
+      string,
+      string,
+      string,
+      bigint,
+      bigint,
+      bigint,
+      boolean,
+      boolean,
+      bigint,
+      bigint
+    ];
+
+    if (!title || createdAt === BigInt(0)) {
+      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+    }
+
+    const serialized = {
+      creator,
+      title,
+      description,
+      imageUrl,
+      goal: goal.toString(),
+      pledged: pledged.toString(),
+      createdAt: createdAt.toString(),
+      withdrawn,
+      active,
+      nextRaffleMilestone: nextRaffleMilestone.toString(),
+      rafflePrize: rafflePrize.toString(),
     };
 
-    console.log('API: Serialized campaign:', serializedCampaign);
-    return NextResponse.json(serializedCampaign);
-  } catch (error) {
-    console.error('API: Error fetching campaign:', error);
+    return NextResponse.json(serialized);
+  } catch (err) {
+    console.error('API: Error fetching campaign:', err);
     return NextResponse.json({ error: 'Failed to fetch campaign' }, { status: 500 });
   }
-} 
+}

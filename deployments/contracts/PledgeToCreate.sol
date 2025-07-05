@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./SoulboundPledgeNFT.sol";
 import "./VRFConsumer.sol";
+import "./IRoninVRFCoordinatorForConsumers.sol";
 
 contract PledgeToCreate is Ownable, ReentrancyGuard, VRFConsumer {
     enum RaffleType { Campaign, Daily }
@@ -142,7 +143,25 @@ contract PledgeToCreate is Ownable, ReentrancyGuard, VRFConsumer {
     }
 
     function _requestCampaignRaffle(uint256 _campaignId) internal {
-        bytes32 reqHash = _requestRandomness(address(this).balance, 500000, gasPrice(), msg.sender);
+        uint256 callbackGasLimit = 800000; // Increased gas limit for complex raffle logic
+        uint256 gasPrice = getGasPrice();
+        
+        // Estimate the VRF fee
+        uint256 estimatedFee = IRoninVRFCoordinatorForConsumers(vrfCoordinator).estimateRequestRandomFee(
+            callbackGasLimit, 
+            gasPrice
+        );
+        
+        // Ensure we have enough funds
+        require(address(this).balance >= estimatedFee, "Insufficient funds for VRF request");
+        
+        bytes32 reqHash = _requestRandomness(
+            estimatedFee,
+            callbackGasLimit,
+            gasPrice,
+            address(this) // Refund to contract
+        );
+        
         raffleType[reqHash] = RaffleType.Campaign;
         raffleCampaignId[reqHash] = _campaignId;
         emit CampaignRaffleRequested(_campaignId, reqHash);
@@ -150,7 +169,26 @@ contract PledgeToCreate is Ownable, ReentrancyGuard, VRFConsumer {
 
     function drawDailyRaffle(uint256 day) external onlyOwner nonReentrant {
         require(dailyRafflePool > 0, "No daily raffle funds");
-        bytes32 reqHash = _requestRandomness(address(this).balance, 500000, gasPrice(), msg.sender);
+        
+        uint256 callbackGasLimit = 800000; // Increased gas limit for complex raffle logic
+        uint256 gasPrice = getGasPrice();
+        
+        // Estimate the VRF fee
+        uint256 estimatedFee = IRoninVRFCoordinatorForConsumers(vrfCoordinator).estimateRequestRandomFee(
+            callbackGasLimit, 
+            gasPrice
+        );
+        
+        // Ensure we have enough funds
+        require(address(this).balance >= estimatedFee, "Insufficient funds for VRF request");
+        
+        bytes32 reqHash = _requestRandomness(
+            estimatedFee,
+            callbackGasLimit,
+            gasPrice,
+            address(this) // Refund to contract
+        );
+        
         raffleType[reqHash] = RaffleType.Daily;
         raffleDay[reqHash] = day;
         emit DailyRaffleRequested(day, reqHash);
@@ -158,54 +196,118 @@ contract PledgeToCreate is Ownable, ReentrancyGuard, VRFConsumer {
 
     function _fulfillRandomSeed(bytes32 reqHash, uint256 randomSeed) internal override {
         if (raffleType[reqHash] == RaffleType.Campaign) {
-            uint256 campaignId = raffleCampaignId[reqHash];
-            address[] memory pledgers = campaignPledgers[campaignId];
-            uint256 totalWeight = 0;
-            for (uint256 i = 0; i < pledgers.length; i++) {
-                totalWeight += pledgedPerCampaign[campaignId][pledgers[i]];
-            }
-            if (totalWeight == 0) return;
-            uint256 rand = randomSeed % totalWeight;
-            uint256 cumWeight = 0;
-            for (uint256 i = 0; i < pledgers.length; i++) {
-                cumWeight += pledgedPerCampaign[campaignId][pledgers[i]];
-                if (rand < cumWeight) {
-                    address winner = pledgers[i];
-                    uint256 prize = campaigns[campaignId].rafflePrize;
-                    campaigns[campaignId].rafflePrize = 0;
-                    (bool success, ) = payable(winner).call{value: prize}("");
-                    require(success, "Campaign raffle payout failed");
-                    emit CampaignRaffleWinner(campaignId, winner, prize);
-                    break;
-                }
-            }
+            _processCampaignRaffle(reqHash, randomSeed);
         } else if (raffleType[reqHash] == RaffleType.Daily) {
-            uint256 day = raffleDay[reqHash];
-            address[] memory pledgers = dailyPledgers[day];
-            uint256 totalWeight = 0;
-            for (uint256 i = 0; i < pledgers.length; i++) {
-                totalWeight += totalPledgedByUser[pledgers[i]];
-            }
-            if (totalWeight == 0) return;
-            uint256 rand = randomSeed % totalWeight;
-            uint256 cumWeight = 0;
-            for (uint256 i = 0; i < pledgers.length; i++) {
-                cumWeight += totalPledgedByUser[pledgers[i]];
-                if (rand < cumWeight) {
-                    address winner = pledgers[i];
-                    uint256 prize = dailyRafflePool;
-                    dailyRafflePool = 0;
-                    (bool success, ) = payable(winner).call{value: prize}("");
-                    require(success, "Daily raffle payout failed");
-                    emit DailyRaffleWinner(day, winner, prize);
-                    break;
+            _processDailyRaffle(reqHash, randomSeed);
+        }
+    }
+
+    function _processCampaignRaffle(bytes32 reqHash, uint256 randomSeed) internal {
+        uint256 campaignId = raffleCampaignId[reqHash];
+        address[] memory pledgers = campaignPledgers[campaignId];
+        
+        if (pledgers.length == 0) return;
+        
+        // Calculate total weight
+        uint256 totalWeight = 0;
+        for (uint256 i = 0; i < pledgers.length; i++) {
+            totalWeight += pledgedPerCampaign[campaignId][pledgers[i]];
+        }
+        
+        if (totalWeight == 0) return;
+        
+        // Select winner using weighted random selection
+        uint256 rand = randomSeed % totalWeight;
+        uint256 cumWeight = 0;
+        
+        for (uint256 i = 0; i < pledgers.length; i++) {
+            cumWeight += pledgedPerCampaign[campaignId][pledgers[i]];
+            if (rand < cumWeight) {
+                address winner = pledgers[i];
+                uint256 prize = campaigns[campaignId].rafflePrize;
+                campaigns[campaignId].rafflePrize = 0;
+                
+                // Safe transfer with gas limit
+                (bool success, ) = payable(winner).call{value: prize, gas: 50000}("");
+                if (!success) {
+                    // If transfer fails, add prize back to campaign
+                    campaigns[campaignId].rafflePrize = prize;
+                    return;
                 }
+                
+                emit CampaignRaffleWinner(campaignId, winner, prize);
+                break;
             }
         }
     }
 
-    function gasPrice() public view returns (uint256) {
-        return 20e9 + block.basefee * 2;
+    function _processDailyRaffle(bytes32 reqHash, uint256 randomSeed) internal {
+        uint256 day = raffleDay[reqHash];
+        address[] memory pledgers = dailyPledgers[day];
+        
+        if (pledgers.length == 0) return;
+        
+        // Calculate total weight
+        uint256 totalWeight = 0;
+        for (uint256 i = 0; i < pledgers.length; i++) {
+            totalWeight += totalPledgedByUser[pledgers[i]];
+        }
+        
+        if (totalWeight == 0) return;
+        
+        // Select winner using weighted random selection
+        uint256 rand = randomSeed % totalWeight;
+        uint256 cumWeight = 0;
+        
+        for (uint256 i = 0; i < pledgers.length; i++) {
+            cumWeight += totalPledgedByUser[pledgers[i]];
+            if (rand < cumWeight) {
+                address winner = pledgers[i];
+                uint256 prize = dailyRafflePool;
+                dailyRafflePool = 0;
+                
+                // Safe transfer with gas limit
+                (bool success, ) = payable(winner).call{value: prize, gas: 50000}("");
+                if (!success) {
+                    // If transfer fails, add prize back to pool
+                    dailyRafflePool = prize;
+                    return;
+                }
+                
+                emit DailyRaffleWinner(day, winner, prize);
+                break;
+            }
+        }
+    }
+
+    function getGasPrice() public view returns (uint256) {
+        // Ensure minimum gas price of 21 GWEI as per Ronin VRF requirements
+        uint256 calculatedPrice = 20e9 + block.basefee * 2;
+        uint256 minimumPrice = 21e9; // 21 GWEI minimum
+        return calculatedPrice > minimumPrice ? calculatedPrice : minimumPrice;
+    }
+
+    // Function to estimate VRF fee for external calls
+    function estimateVRFRequestFee() external view returns (uint256) {
+        uint256 callbackGasLimit = 800000;
+        uint256 gasPrice = getGasPrice();
+        return IRoninVRFCoordinatorForConsumers(vrfCoordinator).estimateRequestRandomFee(
+            callbackGasLimit, 
+            gasPrice
+        );
+    }
+
+    // Function to fund the contract for VRF requests
+    function fundForVRF() external payable {
+        platformRevenue += msg.value;
+    }
+
+    // Emergency function to withdraw stuck funds
+    function emergencyWithdraw() external onlyOwner {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No funds to withdraw");
+        (bool success, ) = payable(owner()).call{value: balance}("");
+        require(success, "Withdrawal failed");
     }
 
     receive() external payable {
@@ -213,7 +315,6 @@ contract PledgeToCreate is Ownable, ReentrancyGuard, VRFConsumer {
     }
 
     function getNFTContract() external view returns (address) {
-    return address(nftContract);
-}
-
+        return address(nftContract);
+    }
 }

@@ -342,7 +342,10 @@ export default function CreatePage() {
                   disabled={isPending || isConfirming}
                 />
                 <div className="text-white/50 text-sm mt-2">
-                  Platform fee: 5% will be deducted for revenue sharing
+                  Platform fee: 5% will be deducted for revenue sharing and raffles
+                </div>
+                <div className="text-white/40 text-xs mt-1">
+                  💡 Raffles trigger every 10% of goal progress, with 40% of fees going to campaign prizes
                 </div>
               </div>
 
@@ -532,9 +535,9 @@ export default function CreatePage() {
                   desc: 'Supporters get permanent proof of their belief in your project.'
                 },
                 {
-                  icon: '💰',
-                  title: 'Share Revenue',
-                  desc: 'Platform earnings are distributed to all pledgers weekly.'
+                  icon: '🎰',
+                  title: 'Raffle Rewards',
+                  desc: 'Raffles trigger every 10% of goal progress, with prizes for supporters.'
                 }
               ].map((item, index) => (
                 <div
@@ -546,6 +549,31 @@ export default function CreatePage() {
                   <p className="text-white/70">{item.desc}</p>
                 </div>
               ))}
+            </div>
+            
+            {/* Raffle System Details */}
+            <div className="mt-8 p-6 bg-purple-900/10 border border-purple-500/20 rounded-2xl">
+              <h3 className="text-xl font-semibold text-purple-400 mb-4 text-center">🎰 Raffle System</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <h4 className="font-semibold text-white mb-2">Campaign Raffles</h4>
+                  <ul className="text-white/70 space-y-1">
+                    <li>• Trigger every 10% of goal progress</li>
+                    <li>• 40% of platform fees go to prizes</li>
+                    <li>• Winners selected by pledge amount weight</li>
+                    <li>• Automatic prize distribution</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-white mb-2">Daily Raffles</h4>
+                  <ul className="text-white/70 space-y-1">
+                    <li>• Run daily with 30% of platform fees</li>
+                    <li>• Open to all platform users</li>
+                    <li>• Weighted by total pledged amount</li>
+                    <li>• Additional rewards for community</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>
