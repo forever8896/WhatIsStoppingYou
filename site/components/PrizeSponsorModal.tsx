@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseEther, parseUnits, Address } from 'viem';
+import { parseEther, parseUnits, Address, createPublicClient, http } from 'viem';
 import { saigon } from 'viem/chains';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
@@ -14,7 +14,19 @@ interface PrizeSponsorModalProps {
   onSuccess: () => void;
 }
 
-type PrizeType = 'ERC20' | 'ERC721' | 'ERC1155';
+type PrizeType = 'ERC20' | 'ERC721';
+
+interface NFTMetadata {
+  tokenId: string;
+  image?: string;
+  name?: string;
+  description?: string;
+}
+
+const publicClient = createPublicClient({
+  chain: saigon,
+  transport: http('https://saigon-testnet.roninchain.com/rpc'),
+});
 
 const ERC20_ABI = [
   {
@@ -35,6 +47,20 @@ const ERC20_ABI = [
     "inputs": [],
     "name": "decimals",
     "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "name",
+    "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "symbol",
+    "outputs": [{"internalType": "string", "name": "", "type": "string"}],
     "stateMutability": "view",
     "type": "function"
   }
@@ -61,21 +87,25 @@ const ERC721_ABI = [
     "outputs": [{"internalType": "address", "name": "", "type": "address"}],
     "stateMutability": "view",
     "type": "function"
-  }
-];
-
-const ERC1155_ABI = [
+  },
   {
-    "inputs": [{"internalType": "address", "name": "operator", "type": "address"}, {"internalType": "bool", "name": "approved", "type": "bool"}],
-    "name": "setApprovalForAll",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "inputs": [{"internalType": "address", "name": "owner", "type": "address"}, {"internalType": "uint256", "name": "index", "type": "uint256"}],
+    "name": "tokenOfOwnerByIndex",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{"internalType": "address", "name": "account", "type": "address"}, {"internalType": "uint256", "name": "id", "type": "uint256"}],
-    "name": "balanceOf",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+    "name": "tokenURI",
+    "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "name",
+    "outputs": [{"internalType": "string", "name": "", "type": "string"}],
     "stateMutability": "view",
     "type": "function"
   }
@@ -84,7 +114,7 @@ const ERC1155_ABI = [
 export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: PrizeSponsorModalProps) {
   const [prizeType, setPrizeType] = useState<PrizeType>('ERC20');
   const [tokenContract, setTokenContract] = useState('');
-  const [tokenId, setTokenId] = useState('');
+  const [selectedTokenId, setSelectedTokenId] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [step, setStep] = useState<'form' | 'approve' | 'deposit'>('form');
@@ -92,6 +122,11 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
   const [contractValid, setContractValid] = useState(false);
   const [tokenBalance, setTokenBalance] = useState('0');
   const [tokenDecimals, setTokenDecimals] = useState(18);
+  const [tokenName, setTokenName] = useState('');
+  const [tokenSymbol, setTokenSymbol] = useState('');
+  const [userNFTs, setUserNFTs] = useState<NFTMetadata[]>([]);
+  const [isLoadingNFTs, setIsLoadingNFTs] = useState(false);
+  const [nftBalance, setNftBalance] = useState(0);
 
   const { isConnected, address } = useAccount();
   
@@ -116,7 +151,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     query: { enabled: !!tokenContract && !!address && prizeType === 'ERC20' && contractValid }
   });
 
-  // Check token decimals for ERC20
+  // Check token details for ERC20
   const { data: erc20Decimals } = useReadContract({
     address: tokenContract as Address,
     abi: ERC20_ABI,
@@ -125,35 +160,132 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     query: { enabled: !!tokenContract && prizeType === 'ERC20' && contractValid }
   });
 
-  // Check NFT ownership for ERC721
-  const { data: nftOwner } = useReadContract({
+  const { data: erc20Name } = useReadContract({
+    address: tokenContract as Address,
+    abi: ERC20_ABI,
+    functionName: 'name',
+    chainId: saigon.id,
+    query: { enabled: !!tokenContract && prizeType === 'ERC20' && contractValid }
+  });
+
+  const { data: erc20Symbol } = useReadContract({
+    address: tokenContract as Address,
+    abi: ERC20_ABI,
+    functionName: 'symbol',
+    chainId: saigon.id,
+    query: { enabled: !!tokenContract && prizeType === 'ERC20' && contractValid }
+  });
+
+  // Check NFT balance for ERC721
+  const { data: erc721Balance } = useReadContract({
     address: tokenContract as Address,
     abi: ERC721_ABI,
-    functionName: 'ownerOf',
-    args: [BigInt(tokenId || '0')],
-    chainId: saigon.id,
-    query: { enabled: !!tokenContract && !!tokenId && prizeType === 'ERC721' && contractValid }
-  });
-
-  // Check ERC1155 balance
-  const { data: erc1155Balance } = useReadContract({
-    address: tokenContract as Address,
-    abi: ERC1155_ABI,
     functionName: 'balanceOf',
-    args: [address!, BigInt(tokenId || '0')],
+    args: [address!],
     chainId: saigon.id,
-    query: { enabled: !!tokenContract && !!tokenId && !!address && prizeType === 'ERC1155' && contractValid }
+    query: { enabled: !!tokenContract && !!address && prizeType === 'ERC721' && contractValid }
   });
 
-  // Update token balance and decimals
+  const { data: erc721Name } = useReadContract({
+    address: tokenContract as Address,
+    abi: ERC721_ABI,
+    functionName: 'name',
+    chainId: saigon.id,
+    query: { enabled: !!tokenContract && prizeType === 'ERC721' && contractValid }
+  });
+
+  // Update token data
   useEffect(() => {
     if (prizeType === 'ERC20') {
       setTokenBalance(erc20Balance?.toString() || '0');
       setTokenDecimals(Number(erc20Decimals) || 18);
-    } else if (prizeType === 'ERC1155') {
-      setTokenBalance(erc1155Balance?.toString() || '0');
+      setTokenName(erc20Name?.toString() || '');
+      setTokenSymbol(erc20Symbol?.toString() || '');
+    } else if (prizeType === 'ERC721') {
+      setNftBalance(Number(erc721Balance) || 0);
+      setTokenName(erc721Name?.toString() || '');
     }
-  }, [erc20Balance, erc20Decimals, erc1155Balance, prizeType]);
+  }, [erc20Balance, erc20Decimals, erc20Name, erc20Symbol, erc721Balance, erc721Name, prizeType]);
+
+  // Load user's NFTs when contract is validated and it's ERC721
+  useEffect(() => {
+    if (contractValid && prizeType === 'ERC721' && address && nftBalance > 0) {
+      loadUserNFTs();
+    } else {
+      setUserNFTs([]);
+    }
+  }, [contractValid, prizeType, address, nftBalance]);
+
+  const loadUserNFTs = async () => {
+    if (!address || !tokenContract || prizeType !== 'ERC721') return;
+    
+    setIsLoadingNFTs(true);
+    try {
+      const nfts: NFTMetadata[] = [];
+      const balance = nftBalance;
+      
+      // Load up to 20 NFTs to avoid overwhelming the UI
+      const maxNFTs = Math.min(balance, 20);
+      
+      for (let i = 0; i < maxNFTs; i++) {
+        try {
+          // Get token ID by index
+          const tokenIdResult = await publicClient.readContract({
+            address: tokenContract as Address,
+            abi: ERC721_ABI,
+            functionName: 'tokenOfOwnerByIndex',
+            args: [address, BigInt(i)],
+          });
+          
+          const tokenId = tokenIdResult?.toString() || '0';
+
+          // Get token URI
+          let metadata: NFTMetadata = {
+            tokenId: tokenId,
+            name: `Token #${tokenId}`,
+            description: `${tokenName} NFT`
+          };
+
+          try {
+            const tokenURIResult = await publicClient.readContract({
+              address: tokenContract as Address,
+              abi: ERC721_ABI,
+              functionName: 'tokenURI',
+              args: [BigInt(tokenId)],
+            });
+            
+            const tokenURI = tokenURIResult?.toString();
+
+            if (tokenURI) {
+              // Try to fetch metadata from URI
+              const response = await fetch(tokenURI);
+              if (response.ok) {
+                const metadataJson = await response.json();
+                metadata = {
+                  tokenId: tokenId,
+                  name: metadataJson.name || `Token #${tokenId}`,
+                  description: metadataJson.description || `${tokenName} NFT`,
+                  image: metadataJson.image || undefined
+                };
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to load metadata for token ${tokenId}:`, error);
+          }
+
+          nfts.push(metadata);
+        } catch (error) {
+          console.warn(`Failed to load NFT at index ${i}:`, error);
+        }
+      }
+
+      setUserNFTs(nfts);
+    } catch (error) {
+      console.error('Error loading user NFTs:', error);
+    } finally {
+      setIsLoadingNFTs(false);
+    }
+  };
 
   // Handle successful approve
   useEffect(() => {
@@ -165,18 +297,47 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
   // Handle successful deposit
   useEffect(() => {
     if (isDepositConfirmed) {
-      onSuccess();
+      // Add a small delay to ensure the transaction is fully processed
+      setTimeout(() => {
+        onSuccess();
+      }, 1000);
     }
   }, [isDepositConfirmed, onSuccess]);
 
   const validateContract = async () => {
-    if (!tokenContract) return;
+    if (!tokenContract || !address) return;
     
     setIsValidatingContract(true);
     try {
-      // This is a simple validation - in production you'd want more robust checks
+      // Basic address validation
       const isValid = tokenContract.startsWith('0x') && tokenContract.length === 42;
-      setContractValid(isValid);
+      if (!isValid) {
+        setContractValid(false);
+        return;
+      }
+
+      // Try to call a basic function to verify it's a valid contract
+      try {
+        if (prizeType === 'ERC20') {
+          await publicClient.readContract({
+            address: tokenContract as Address,
+            abi: ERC20_ABI,
+            functionName: 'balanceOf',
+            args: [address],
+          });
+        } else if (prizeType === 'ERC721') {
+          await publicClient.readContract({
+            address: tokenContract as Address,
+            abi: ERC721_ABI,
+            functionName: 'balanceOf',
+            args: [address],
+          });
+        }
+        setContractValid(true);
+      } catch (error) {
+        console.warn('Contract validation failed:', error);
+        setContractValid(false);
+      }
     } catch (error) {
       setContractValid(false);
     } finally {
@@ -184,13 +345,18 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     }
   };
 
+  // Debounced contract validation to prevent excessive calls
   useEffect(() => {
-    if (tokenContract) {
-      validateContract();
-    } else {
-      setContractValid(false);
-    }
-  }, [tokenContract]);
+    const timeoutId = setTimeout(() => {
+      if (tokenContract && address) {
+        validateContract();
+      } else {
+        setContractValid(false);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [tokenContract, prizeType, address]);
 
   const handleApprove = async () => {
     if (!isConnected || !tokenContract) return;
@@ -209,15 +375,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
         address: tokenContract as Address,
         abi: ERC721_ABI,
         functionName: 'approve',
-        args: [CONTRACTS.PLEDGE_TO_CREATE, BigInt(tokenId)],
-        chainId: saigon.id,
-      });
-    } else if (prizeType === 'ERC1155') {
-      writeApprove({
-        address: tokenContract as Address,
-        abi: ERC1155_ABI,
-        functionName: 'setApprovalForAll',
-        args: [CONTRACTS.PLEDGE_TO_CREATE, true],
+        args: [CONTRACTS.PLEDGE_TO_CREATE, BigInt(selectedTokenId)],
         chainId: saigon.id,
       });
     }
@@ -240,15 +398,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
         address: CONTRACTS.PLEDGE_TO_CREATE,
         abi: PLEDGE_TO_CREATE_ABI,
         functionName: 'depositERC721Prize',
-        args: [BigInt(campaignId), tokenContract as Address, BigInt(tokenId), description],
-        chainId: saigon.id,
-      });
-    } else if (prizeType === 'ERC1155') {
-      writeDeposit({
-        address: CONTRACTS.PLEDGE_TO_CREATE,
-        abi: PLEDGE_TO_CREATE_ABI,
-        functionName: 'depositERC1155Prize',
-        args: [BigInt(campaignId), tokenContract as Address, BigInt(tokenId), BigInt(amount), description],
+        args: [BigInt(campaignId), tokenContract as Address, BigInt(selectedTokenId), description],
         chainId: saigon.id,
       });
     }
@@ -259,11 +409,9 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     
     switch (prizeType) {
       case 'ERC20':
-        return amount && parseFloat(amount) > 0;
+        return amount && parseFloat(amount) > 0 && parseFloat(tokenBalance) >= parseFloat(amount);
       case 'ERC721':
-        return tokenId && typeof nftOwner === 'string' && nftOwner.toLowerCase() === address?.toLowerCase();
-      case 'ERC1155':
-        return tokenId && amount && parseFloat(amount) > 0 && parseFloat(tokenBalance) >= parseFloat(amount);
+        return selectedTokenId && userNFTs.some(nft => nft.tokenId === selectedTokenId);
       default:
         return false;
     }
@@ -291,7 +439,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-gray-900 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+          className="bg-gray-900 rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-6">
@@ -305,26 +453,43 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
           </div>
 
           {step === 'form' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Prize Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-3">
                   Prize Type
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['ERC20', 'ERC721', 'ERC1155'] as PrizeType[]).map((type) => (
+                <div className="grid grid-cols-2 gap-3">
+                  {(['ERC20', 'ERC721'] as PrizeType[]).map((type) => (
                     <button
                       key={type}
-                      onClick={() => setPrizeType(type)}
-                      className={`p-3 rounded-lg text-sm font-medium transition-all ${
+                      onClick={() => {
+                        setPrizeType(type);
+                        setTokenContract('');
+                        setSelectedTokenId('');
+                        setAmount('');
+                        setUserNFTs([]);
+                      }}
+                      className={`p-4 rounded-xl text-sm font-medium transition-all ${
                         prizeType === type
-                          ? 'bg-purple-600 text-white'
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
                           : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                       }`}
                     >
-                      {type === 'ERC20' && '🪙 Token'}
-                      {type === 'ERC721' && '🖼️ NFT'}
-                      {type === 'ERC1155' && '🎨 Multi'}
+                      {type === 'ERC20' && (
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">🪙</div>
+                          <div>ERC20 Token</div>
+                          <div className="text-xs opacity-70">Fungible tokens</div>
+                        </div>
+                      )}
+                      {type === 'ERC721' && (
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">🖼️</div>
+                          <div>ERC721 NFT</div>
+                          <div className="text-xs opacity-70">Unique collectibles</div>
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -332,7 +497,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
 
               {/* Token Contract */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-3">
                   Token Contract Address
                 </label>
                 <input
@@ -340,57 +505,132 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                   value={tokenContract}
                   onChange={(e) => setTokenContract(e.target.value)}
                   placeholder="0x..."
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
                 {isValidatingContract && (
-                  <div className="text-xs text-gray-400 mt-1">Validating contract...</div>
+                  <div className="text-xs text-blue-400 mt-2 flex items-center gap-2">
+                    <motion.div
+                      className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                    Validating contract...
+                  </div>
                 )}
                 {tokenContract && !isValidatingContract && (
-                  <div className={`text-xs mt-1 ${contractValid ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className={`text-xs mt-2 ${contractValid ? 'text-green-400' : 'text-red-400'}`}>
                     {contractValid ? '✓ Valid contract address' : '✗ Invalid contract address'}
+                  </div>
+                )}
+                {contractValid && tokenName && (
+                  <div className="text-xs text-gray-400 mt-1">
+                    {prizeType === 'ERC20' ? `${tokenName} (${tokenSymbol})` : tokenName}
                   </div>
                 )}
               </div>
 
-              {/* Token ID (for ERC721/ERC1155) */}
-              {(prizeType === 'ERC721' || prizeType === 'ERC1155') && (
+              {/* ERC20 Amount */}
+              {prizeType === 'ERC20' && contractValid && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Token ID
+                  <label className="block text-sm font-medium text-gray-300 mb-3">
+                    Amount
                   </label>
-                  <input
-                    type="number"
-                    value={tokenId}
-                    onChange={(e) => setTokenId(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-                  />
-                  {prizeType === 'ERC721' && tokenId && nftOwner && typeof nftOwner === 'string' && (
-                    <div className={`text-xs mt-1 ${nftOwner.toLowerCase() === address?.toLowerCase() ? 'text-green-400' : 'text-red-400'}`}>
-                      {nftOwner.toLowerCase() === address?.toLowerCase() ? '✓ You own this NFT' : '✗ You do not own this NFT'}
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="0"
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    />
+                    {tokenSymbol && (
+                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                        {tokenSymbol}
+                      </div>
+                    )}
+                  </div>
+                  {tokenBalance !== '0' && (
+                    <div className="text-xs text-gray-400 mt-2 flex justify-between">
+                      <span>Balance: {formatBalance(tokenBalance, tokenDecimals)} {tokenSymbol}</span>
+                      <button
+                        onClick={() => setAmount(formatBalance(tokenBalance, tokenDecimals))}
+                        className="text-purple-400 hover:text-purple-300 transition-colors"
+                      >
+                        Use Max
+                      </button>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Amount (for ERC20/ERC1155) */}
-              {(prizeType === 'ERC20' || prizeType === 'ERC1155') && (
+              {/* ERC721 NFT Selection */}
+              {prizeType === 'ERC721' && contractValid && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Amount
+                  <label className="block text-sm font-medium text-gray-300 mb-3">
+                    Select NFT ({nftBalance} available)
                   </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-                  />
-                  {tokenBalance !== '0' && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      Balance: {formatBalance(tokenBalance, prizeType === 'ERC20' ? tokenDecimals : 0)}
+                  
+                  {isLoadingNFTs ? (
+                    <div className="bg-gray-800 rounded-xl p-8 text-center">
+                      <motion.div
+                        className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      />
+                      <div className="text-gray-400">Loading your NFTs...</div>
+                    </div>
+                  ) : userNFTs.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+                      {userNFTs.map((nft) => (
+                        <motion.button
+                          key={nft.tokenId}
+                          onClick={() => setSelectedTokenId(nft.tokenId)}
+                          className={`p-3 rounded-xl border-2 transition-all ${
+                            selectedTokenId === nft.tokenId
+                              ? 'border-purple-500 bg-purple-500/20'
+                              : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                          }`}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div className="aspect-square bg-gray-700 rounded-lg mb-2 overflow-hidden">
+                            {nft.image ? (
+                              <img
+                                src={nft.image}
+                                alt={nft.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            ) : null}
+                            {!nft.image && (
+                              <div className="w-full h-full flex items-center justify-center text-gray-500 text-2xl">
+                                🖼️
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-xs text-white font-medium truncate">
+                            {nft.name}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            #{nft.tokenId}
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                  ) : nftBalance === 0 ? (
+                    <div className="bg-gray-800 rounded-xl p-6 text-center">
+                      <div className="text-4xl mb-2">🚫</div>
+                      <div className="text-gray-400">You don't own any NFTs from this collection</div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-800 rounded-xl p-6 text-center">
+                      <div className="text-4xl mb-2">⚠️</div>
+                      <div className="text-gray-400">Unable to load NFTs from this contract</div>
                     </div>
                   )}
                 </div>
@@ -398,15 +638,21 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-3">
                   Prize Description
                 </label>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g., 100 USDC tokens, Rare NFT, etc."
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                  placeholder={
+                    prizeType === 'ERC20' 
+                      ? `e.g., ${amount} ${tokenSymbol} tokens` 
+                      : selectedTokenId 
+                        ? `e.g., ${userNFTs.find(nft => nft.tokenId === selectedTokenId)?.name || `Token #${selectedTokenId}`}`
+                        : 'e.g., Rare NFT collectible'
+                  }
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
               </div>
 
@@ -416,9 +662,9 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                   <button
                     onClick={() => setStep('approve')}
                     disabled={!canProceed()}
-                    className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-700 hover:to-pink-700 transition-all"
+                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg disabled:shadow-none"
                   >
-                    Continue to Approve
+                    {canProceed() ? 'Continue to Approve' : 'Complete all fields to continue'}
                   </button>
                 ) : (
                   <TantoConnectButton />
@@ -428,7 +674,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
           )}
 
           {step === 'approve' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="text-center">
                 <div className="text-lg font-semibold text-white mb-2">
                   Step 1: Approve Token Transfer
@@ -438,28 +684,64 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                 </div>
               </div>
 
-              <div className="bg-gray-800 rounded-lg p-4">
-                <div className="text-sm text-gray-300">
-                  <div>Prize Type: <span className="text-white">{prizeType}</span></div>
-                  <div>Contract: <span className="text-white font-mono text-xs">{tokenContract}</span></div>
-                  {tokenId && <div>Token ID: <span className="text-white">{tokenId}</span></div>}
-                  {amount && <div>Amount: <span className="text-white">{amount}</span></div>}
-                  <div>Description: <span className="text-white">{description}</span></div>
+              <div className="bg-gray-800 rounded-xl p-6">
+                <div className="text-sm text-gray-300 space-y-2">
+                  <div className="flex justify-between">
+                    <span>Prize Type:</span>
+                    <span className="text-white">{prizeType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Contract:</span>
+                    <span className="text-white font-mono text-xs">{tokenContract}</span>
+                  </div>
+                  {tokenName && (
+                    <div className="flex justify-between">
+                      <span>Token:</span>
+                      <span className="text-white">{tokenName} {tokenSymbol && `(${tokenSymbol})`}</span>
+                    </div>
+                  )}
+                  {selectedTokenId && (
+                    <div className="flex justify-between">
+                      <span>Token ID:</span>
+                      <span className="text-white">#{selectedTokenId}</span>
+                    </div>
+                  )}
+                  {amount && (
+                    <div className="flex justify-between">
+                      <span>Amount:</span>
+                      <span className="text-white">{amount} {tokenSymbol}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Description:</span>
+                    <span className="text-white">{description}</span>
+                  </div>
                 </div>
               </div>
 
               <button
                 onClick={handleApprove}
                 disabled={isApproving || isConfirmingApprove}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-700 hover:to-purple-700 transition-all"
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg disabled:shadow-none"
               >
-                {isApproving || isConfirmingApprove ? '⏳ Approving...' : '✅ Approve Transfer'}
+                {isApproving || isConfirmingApprove ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <motion.div
+                      className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                    Approving...
+                  </div>
+                ) : (
+                  '✅ Approve Transfer'
+                )}
               </button>
             </div>
           )}
 
           {step === 'deposit' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="text-center">
                 <div className="text-lg font-semibold text-white mb-2">
                   Step 2: Deposit Prize
@@ -469,22 +751,58 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                 </div>
               </div>
 
-              <div className="bg-gray-800 rounded-lg p-4">
-                <div className="text-sm text-gray-300">
-                  <div>Prize Type: <span className="text-white">{prizeType}</span></div>
-                  <div>Contract: <span className="text-white font-mono text-xs">{tokenContract}</span></div>
-                  {tokenId && <div>Token ID: <span className="text-white">{tokenId}</span></div>}
-                  {amount && <div>Amount: <span className="text-white">{amount}</span></div>}
-                  <div>Description: <span className="text-white">{description}</span></div>
+              <div className="bg-gray-800 rounded-xl p-6">
+                <div className="text-sm text-gray-300 space-y-2">
+                  <div className="flex justify-between">
+                    <span>Prize Type:</span>
+                    <span className="text-white">{prizeType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Contract:</span>
+                    <span className="text-white font-mono text-xs">{tokenContract}</span>
+                  </div>
+                  {tokenName && (
+                    <div className="flex justify-between">
+                      <span>Token:</span>
+                      <span className="text-white">{tokenName} {tokenSymbol && `(${tokenSymbol})`}</span>
+                    </div>
+                  )}
+                  {selectedTokenId && (
+                    <div className="flex justify-between">
+                      <span>Token ID:</span>
+                      <span className="text-white">#{selectedTokenId}</span>
+                    </div>
+                  )}
+                  {amount && (
+                    <div className="flex justify-between">
+                      <span>Amount:</span>
+                      <span className="text-white">{amount} {tokenSymbol}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Description:</span>
+                    <span className="text-white">{description}</span>
+                  </div>
                 </div>
               </div>
 
               <button
                 onClick={handleDeposit}
                 disabled={isDepositing || isConfirmingDeposit}
-                className="w-full py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-green-700 hover:to-blue-700 transition-all"
+                className="w-full py-4 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-green-700 hover:to-blue-700 transition-all shadow-lg disabled:shadow-none"
               >
-                {isDepositing || isConfirmingDeposit ? '⏳ Depositing...' : '🎁 Deposit Prize'}
+                {isDepositing || isConfirmingDeposit ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <motion.div
+                      className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                    Depositing...
+                  </div>
+                ) : (
+                  '🎁 Deposit Prize'
+                )}
               </button>
             </div>
           )}

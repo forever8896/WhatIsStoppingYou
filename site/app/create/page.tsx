@@ -8,6 +8,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import { parseEther } from 'viem';
 import { saigon } from 'viem/chains';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
+import Link from 'next/link';
 
 // Walrus API endpoints
 const WALRUS_PUBLISHER = 'https://publisher.walrus-testnet.walrus.space';
@@ -315,13 +316,12 @@ export default function CreatePage() {
           </motion.div>
           
           <div className="flex items-center gap-8">
-            <motion.button
-              onClick={() => router.push('/campaigns')}
-              className="text-lg font-semibold text-white/80 hover:text-white transition-colors duration-300"
-              whileHover={{ scale: 1.05 }}
-            >
-              🎯 Campaigns
-            </motion.button>
+            <Link href="/campaigns" className="text-white/70 hover:text-white transition-colors">
+              Campaigns
+            </Link>
+            <Link href="/leaderboard" className="text-white/70 hover:text-white transition-colors">
+              Leaderboard
+            </Link>
             <TantoConnectButton />
           </div>
         </div>

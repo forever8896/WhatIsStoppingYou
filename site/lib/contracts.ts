@@ -1150,6 +1150,57 @@ export const PLEDGE_TO_CREATE_ABI = [
   }
 ] as const;
 
+// Soulbound NFT ABI for reading NFT data
+export const SOULBOUND_NFT_ABI = [
+  {
+    inputs: [{ name: '_user', type: 'address' }],
+    name: 'getUserNFTs',
+    outputs: [{ name: '', type: 'uint256[]' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: '_tokenId', type: 'uint256' }],
+    name: 'getPledgeNFT',
+    outputs: [
+      {
+        components: [
+          { name: 'campaignId', type: 'uint256' },
+          { name: 'pledgeAmount', type: 'uint256' },
+          { name: 'timestamp', type: 'uint256' },
+          { name: 'pledger', type: 'address' },
+          { name: 'campaignTitle', type: 'string' },
+        ],
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: '_user', type: 'address' }],
+    name: 'getTotalPledgedByUser',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: '_tokenId', type: 'uint256' }],
+    name: 'tokenURI',
+    outputs: [{ name: '', type: 'string' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'tokenCounter',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
 // Updated Campaign type definition to match the new contract structure
 export interface Campaign {
   creator: Address;

@@ -574,7 +574,6 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
           onClose={() => setShowSponsorModal(false)}
           onSuccess={() => {
             setShowSponsorModal(false);
-            refetchPrizes();
             onSponsorSuccess?.();
           }}
         />

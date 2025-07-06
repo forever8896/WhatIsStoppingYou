@@ -15,6 +15,7 @@ import ActivityFeed from '@/components/ActivityFeed';
 import CampaignCard from '@/components/CampaignCard';
 import DailyRaffleWidget from '@/components/DailyRaffleWidget';
 import { Address } from 'viem';
+import Link from 'next/link';
 
 interface SerializedCampaign {
   creator: string;
@@ -64,7 +65,6 @@ export default function CampaignsPage() {
     platformRevenue: '0',
     campaignCount: 0
   });
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'ended'>('all');
   
@@ -172,16 +172,94 @@ export default function CampaignsPage() {
     setActivityFeed(prev => [newActivity, ...prev.slice(0, 19)]);
   }, []);
 
-  // Refresh data handler
-  const handleDataRefresh = useCallback(() => {
-    setRefreshTrigger(prev => prev + 1);
-    // Refetch platform stats
+  // Update specific campaign without full page refresh
+  const updateCampaign = useCallback(async (campaignId: number) => {
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}`);
+      if (response.ok) {
+        const updatedCampaign = await response.json();
+        setCampaigns(prev => prev.map(campaign => 
+          campaign.id === campaignId 
+            ? { ...updatedCampaign, id: campaignId }
+            : campaign
+        ));
+        
+        // Only refetch platform stats for pledge-related updates
+        refetchTotalPledged();
+        refetchDailyRafflePool();
+      }
+    } catch (error) {
+      console.error(`Error updating campaign ${campaignId}:`, error);
+    }
+  }, [refetchTotalPledged, refetchDailyRafflePool]);
+
+  // Handle pledge success - only update the specific campaign
+  const handlePledgeSuccess = useCallback((campaignId: number) => {
+    updateCampaign(campaignId);
+    playSound('pledge');
+    triggerParticles('pledge');
+    addNotification({
+      type: 'success',
+      title: 'Pledge Successful! 🎉',
+      message: 'Your pledge has been recorded and you\'re entered in the prize draw!'
+    });
+    addActivity({
+      type: 'pledge',
+      message: `New pledge made to campaign #${campaignId}`,
+    });
+  }, [updateCampaign, playSound, triggerParticles, addNotification, addActivity]);
+
+  // Handle sponsor success - only update the specific campaign
+  const handleSponsorSuccess = useCallback((campaignId: number) => {
+    updateCampaign(campaignId);
+    addNotification({
+      type: 'success',
+      title: 'Prize Sponsored! 🎁',
+      message: 'Your prize has been added to the campaign!'
+    });
+    addActivity({
+      type: 'pledge',
+      message: `New prize sponsored for campaign #${campaignId}`,
+    });
+  }, [updateCampaign, addNotification, addActivity]);
+
+  // Full refresh handler (only used for manual refresh button)
+  const handleManualRefresh = useCallback(() => {
+    setLoading(true);
     refetchCampaignCount();
     refetchTotalPledged();
     refetchDailyRafflePool();
-  }, [refetchCampaignCount, refetchTotalPledged, refetchDailyRafflePool]);
+    
+    // Re-fetch all campaigns
+    const count = Number(campaignCount || 0);
+    const campaignPromises = [];
+    
+    for (let i = 0; i < count; i++) {
+      campaignPromises.push(
+        fetch(`/api/campaigns/${i}`)
+          .then(res => res.json())
+          .then(data => ({ ...data, id: i }))
+          .catch(err => {
+            console.error(`Error fetching campaign ${i}:`, err);
+            return null;
+          })
+      );
+    }
+    
+    Promise.all(campaignPromises)
+      .then(results => {
+        const validCampaigns = results.filter(Boolean) as CampaignWithId[];
+        setCampaigns(validCampaigns);
+      })
+      .catch(error => {
+        console.error('Error fetching campaigns:', error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [refetchCampaignCount, refetchTotalPledged, refetchDailyRafflePool, campaignCount]);
 
-  // Fetch campaigns
+  // Initial fetch of campaigns
   useEffect(() => {
     const fetchCampaigns = async () => {
       if (!campaignCount) return;
@@ -215,7 +293,7 @@ export default function CampaignsPage() {
     };
 
     fetchCampaigns();
-  }, [campaignCount, refreshTrigger]);
+  }, [campaignCount]); // Only re-run when campaign count changes
 
   const safeFormatEther = (value: string) => {
     try {
@@ -261,18 +339,15 @@ export default function CampaignsPage() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-6"
           >
-            <button
-              onClick={() => router.push('/campaigns')}
-              className="text-purple-300 font-semibold border-b-2 border-purple-300"
-            >
-              🎯 Campaigns
-            </button>
-            <button
-              onClick={() => router.push('/create')}
-              className="text-white/80 hover:text-white transition-colors font-semibold"
-            >
-              ✨ Create
-            </button>
+            <Link href="/create" className="text-white/70 hover:text-white transition-colors">
+              Create
+            </Link>
+            <Link href="/leaderboard" className="text-white/70 hover:text-white transition-colors">
+              Leaderboard
+            </Link>
+            <span className="text-purple-400 font-semibold">
+              Campaigns
+            </span>
             <TantoConnectButton />
           </motion.div>
         </div>
@@ -296,7 +371,7 @@ export default function CampaignsPage() {
         </motion.div>
 
         {/* Daily Raffle Widget */}
-        <DailyRaffleWidget onDrawSuccess={handleDataRefresh} />
+        <DailyRaffleWidget onDrawSuccess={() => refetchDailyRafflePool()} />
 
         {/* Filter Tabs */}
         <motion.div
@@ -384,8 +459,8 @@ export default function CampaignsPage() {
               >
                 <CampaignCard
                   campaign={campaign}
-                  onPledgeSuccess={handleDataRefresh}
-                  onSponsorSuccess={handleDataRefresh}
+                  onPledgeSuccess={() => handlePledgeSuccess(campaign.id)}
+                  onSponsorSuccess={() => handleSponsorSuccess(campaign.id)}
                 />
               </motion.div>
             ))}
@@ -418,7 +493,7 @@ export default function CampaignsPage() {
           </motion.div>
         )}
 
-        {/* Refresh Button */}
+        {/* Manual Refresh Button */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -426,14 +501,52 @@ export default function CampaignsPage() {
           className="text-center mt-12"
         >
           <motion.button
-            onClick={handleDataRefresh}
-            className="px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl text-white font-medium transition-all border border-white/20"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            onClick={handleManualRefresh}
+            disabled={loading}
+            className="px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl text-white font-medium transition-all border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            whileHover={{ scale: loading ? 1 : 1.05 }}
+            whileTap={{ scale: loading ? 1 : 0.95 }}
           >
-            🔄 Refresh Campaigns
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <motion.div
+                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                />
+                <span>Refreshing...</span>
+              </div>
+            ) : (
+              <>🔄 Refresh Campaigns</>
+            )}
           </motion.button>
         </motion.div>
+
+        {/* Notifications */}
+        <AnimatePresence>
+          {notifications.map((notification) => (
+            <motion.div
+              key={notification.id}
+              initial={{ opacity: 0, x: 300 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 300 }}
+              className="fixed top-4 right-4 z-50 max-w-sm"
+            >
+              <div className={`p-4 rounded-xl backdrop-blur-sm border shadow-lg ${
+                notification.type === 'success' ? 'bg-green-500/20 border-green-500/50 text-green-300' :
+                notification.type === 'error' ? 'bg-red-500/20 border-red-500/50 text-red-300' :
+                notification.type === 'warning' ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300' :
+                'bg-blue-500/20 border-blue-500/50 text-blue-300'
+              }`}>
+                <div className="font-semibold mb-1">{notification.title}</div>
+                <div className="text-sm opacity-90">{notification.message}</div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {/* Particle Effects */}
+        <ParticleEffect trigger={particleEffect.trigger} type={particleEffect.type} />
       </div>
     </div>
   );

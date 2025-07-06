@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function Home() {
   const [activeFeature, setActiveFeature] = useState(0);
@@ -104,18 +105,15 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-6"
           >
-            <button
-              onClick={() => router.push('/campaigns')}
-              className="text-white/80 hover:text-white transition-colors font-semibold"
-            >
-              🎯 Campaigns
-            </button>
-            <button
-              onClick={() => router.push('/create')}
-              className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-bold hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg"
-            >
-              ✨ Create
-            </button>
+            <Link href="/campaigns" className="text-white/70 hover:text-white transition-colors">
+              Campaigns
+            </Link>
+            <Link href="/create" className="text-white/70 hover:text-white transition-colors">
+              Create
+            </Link>
+            <Link href="/leaderboard" className="text-white/70 hover:text-white transition-colors">
+              Leaderboard
+            </Link>
           </motion.div>
         </div>
       </nav>
