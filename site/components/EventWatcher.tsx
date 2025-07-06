@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useAccount, useWatchContractEvent } from 'wagmi';
-import { formatEther } from 'viem';
+import { formatEther, Log } from 'viem';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 
 interface ActivityFeed {
@@ -30,6 +30,50 @@ interface EventWatcherProps {
   onCampaignUpdate: () => void;
 }
 
+// Type definitions for contract event logs
+interface PledgeMadeLog extends Log {
+  args: {
+    campaignId: bigint;
+    pledger: string;
+    amount: bigint;
+    timestamp: bigint;
+    nftTokenId: bigint;
+  };
+}
+
+interface CampaignRaffleWinnerLog extends Log {
+  args: {
+    campaignId: bigint;
+    winner: string;
+    prizeIndex: bigint;
+  };
+}
+
+interface DailyRaffleWinnerLog extends Log {
+  args: {
+    day: bigint;
+    winner: string;
+    prize: bigint;
+  };
+}
+
+interface CampaignRaffleRequestedLog extends Log {
+  args: {
+    campaignId: bigint;
+    requestHash: string;
+  };
+}
+
+interface CampaignCreatedLog extends Log {
+  args: {
+    campaignId: bigint;
+    creator: string;
+    title: string;
+    goal: bigint;
+    createdAt: bigint;
+  };
+}
+
 export default function EventWatcher({ 
   onActivity, 
   onNotification, 
@@ -54,16 +98,16 @@ export default function EventWatcher({
           const isCurrentUser = pledger === address;
           onActivity({
             type: 'pledge',
-            message: `${isCurrentUser ? 'You' : `${(pledger as string).slice(0, 6)}...${(pledger as string).slice(-4)}`} pledged ${formatEther(amount as bigint)} RON to Campaign #${campaignId}`,
-            user: pledger as string,
-            amount: (amount as bigint).toString()
+            message: `${isCurrentUser ? 'You' : `${pledger.slice(0, 6)}...${pledger.slice(-4)}`} pledged ${formatEther(amount)} RON to Campaign #${campaignId}`,
+            user: pledger,
+            amount: amount.toString()
           });
           
           if (isCurrentUser) {
             onNotification({
               type: 'success',
               title: '🎉 Pledge Successful!',
-              message: `You pledged ${formatEther(amount as bigint)} RON and received NFT #${nftTokenId}`,
+              message: `You pledged ${formatEther(amount)} RON and received NFT #${nftTokenId}`,
             });
           }
           
@@ -78,26 +122,26 @@ export default function EventWatcher({
   useWatchContractEvent({
     address: CONTRACTS.PLEDGE_TO_CREATE,
     abi: PLEDGE_TO_CREATE_ABI,
-    eventName: 'CampaignRaffleWinner',
+    eventName: 'CampaignPrizeWinner',
     onLogs: useCallback((logs: any[]) => {
       logs.forEach((log: any) => {
-        const { campaignId, winner, prize } = log.args;
-        if (winner && prize && campaignId) {
+        const { campaignId, winner, prizeIndex } = log.args;
+        if (winner && prizeIndex !== undefined && campaignId) {
           onParticleEffect('win');
           onSound('win');
           
           const isCurrentUser = winner === address;
           onActivity({
             type: 'raffle_win',
-            message: `🏆 ${isCurrentUser ? 'You won' : `${(winner as string).slice(0, 6)}...${(winner as string).slice(-4)} won`} ${formatEther(prize as bigint)} RON in Campaign #${campaignId} raffle!`,
-            user: winner as string,
-            amount: (prize as bigint).toString()
+            message: `🏆 ${isCurrentUser ? 'You won' : `${winner.slice(0, 6)}...${winner.slice(-4)} won`} Prize #${prizeIndex} in Campaign #${campaignId} raffle!`,
+            user: winner,
+            amount: prizeIndex.toString()
           });
           
           onNotification({
             type: isCurrentUser ? 'success' : 'info',
             title: isCurrentUser ? '🏆 YOU WON!' : '🎰 Raffle Winner',
-            message: `${isCurrentUser ? 'Congratulations! You won' : `${(winner as string).slice(0, 6)}...${(winner as string).slice(-4)} won`} ${formatEther(prize as bigint)} RON!`,
+            message: `${isCurrentUser ? 'Congratulations! You won' : `${winner.slice(0, 6)}...${winner.slice(-4)} won`} Prize #${prizeIndex}!`,
           });
           
           // Trigger campaign data refresh
@@ -122,15 +166,15 @@ export default function EventWatcher({
           const isCurrentUser = winner === address;
           onActivity({
             type: 'raffle_win',
-            message: `🎊 ${isCurrentUser ? 'You won' : `${(winner as string).slice(0, 6)}...${(winner as string).slice(-4)} won`} ${formatEther(prize as bigint)} RON in the daily raffle!`,
-            user: winner as string,
-            amount: (prize as bigint).toString()
+            message: `🎊 ${isCurrentUser ? 'You won' : `${winner.slice(0, 6)}...${winner.slice(-4)} won`} ${formatEther(prize)} RON in the daily raffle!`,
+            user: winner,
+            amount: prize.toString()
           });
           
           onNotification({
             type: isCurrentUser ? 'success' : 'info',
             title: isCurrentUser ? '🎊 DAILY JACKPOT!' : '🎰 Daily Winner',
-            message: `${isCurrentUser ? 'Amazing! You won' : `${(winner as string).slice(0, 6)}...${(winner as string).slice(-4)} won`} the daily raffle of ${formatEther(prize as bigint)} RON!`,
+            message: `${isCurrentUser ? 'Amazing! You won' : `${winner.slice(0, 6)}...${winner.slice(-4)} won`} the daily raffle of ${formatEther(prize)} RON!`,
           });
           
           // Trigger platform stats refresh
@@ -180,7 +224,7 @@ export default function EventWatcher({
           
           onActivity({
             type: 'campaign_created',
-            message: `🚀 ${isCurrentUser ? 'You' : `${(creator as string).slice(0, 6)}...${(creator as string).slice(-4)}`} created "${title}" with goal ${formatEther(goal as bigint)} RON`
+            message: `🚀 ${isCurrentUser ? 'You' : `${creator.slice(0, 6)}...${creator.slice(-4)}`} created "${title}" with goal ${formatEther(goal)} RON`
           });
           
           if (isCurrentUser) {

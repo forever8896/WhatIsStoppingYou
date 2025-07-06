@@ -1,10 +1,6 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useReadContract } from 'wagmi';
-import { formatEther } from 'viem';
-import { saigon } from 'viem/chains';
-import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 
 interface LeaderboardProps {
   isOpen: boolean;

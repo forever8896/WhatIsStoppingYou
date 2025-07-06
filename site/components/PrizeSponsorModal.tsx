@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseEther, parseUnits, Address, createPublicClient, http } from 'viem';
+import { parseUnits, Address, createPublicClient, http } from 'viem';
 import { saigon } from 'viem/chains';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
 import { useSounds } from '@/hooks/useSounds';
+import Image from 'next/image';
 
 interface PrizeSponsorModalProps {
   campaignId: number;
@@ -209,16 +210,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     }
   }, [erc20Balance, erc20Decimals, erc20Name, erc20Symbol, erc721Balance, erc721Name, prizeType]);
 
-  // Load user's NFTs when contract is validated and it's ERC721
-  useEffect(() => {
-    if (contractValid && prizeType === 'ERC721' && address && nftBalance > 0) {
-      loadUserNFTs();
-    } else {
-      setUserNFTs([]);
-    }
-  }, [contractValid, prizeType, address, nftBalance]);
-
-  const loadUserNFTs = async () => {
+  const loadUserNFTs = useCallback(async () => {
     if (!address || !tokenContract || prizeType !== 'ERC721') return;
     
     setIsLoadingNFTs(true);
@@ -271,23 +263,32 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                 };
               }
             }
-          } catch (error) {
-            console.warn(`Failed to load metadata for token ${tokenId}:`, error);
+          } catch {
+            // Ignore metadata loading errors
           }
 
           nfts.push(metadata);
-        } catch (error) {
-          console.warn(`Failed to load NFT at index ${i}:`, error);
+        } catch {
+          // Ignore individual NFT loading errors
         }
       }
 
       setUserNFTs(nfts);
-    } catch (error) {
-      console.error('Error loading user NFTs:', error);
+    } catch {
+      // Ignore overall loading errors
     } finally {
       setIsLoadingNFTs(false);
     }
-  };
+  }, [address, tokenContract, prizeType, nftBalance, tokenName]);
+
+  // Load user's NFTs when contract is validated and it's ERC721
+  useEffect(() => {
+    if (contractValid && prizeType === 'ERC721' && address && nftBalance > 0) {
+      loadUserNFTs();
+    } else {
+      setUserNFTs([]);
+    }
+  }, [contractValid, prizeType, address, nftBalance, loadUserNFTs]);
 
   // Preload sounds on component mount
   useEffect(() => {
@@ -310,7 +311,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     }
   }, [isApproveConfirmed, playSound]);
 
-  const validateContract = async () => {
+  const validateContract = useCallback(async () => {
     if (!tokenContract || !address) return;
     
     setIsValidatingContract(true);
@@ -340,16 +341,15 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
           });
         }
         setContractValid(true);
-      } catch (error) {
-        console.warn('Contract validation failed:', error);
+      } catch {
         setContractValid(false);
       }
-    } catch (error) {
+    } catch {
       setContractValid(false);
     } finally {
       setIsValidatingContract(false);
     }
-  };
+  }, [tokenContract, prizeType, address]);
 
   // Debounced contract validation to prevent excessive calls
   useEffect(() => {
@@ -362,7 +362,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [tokenContract, prizeType, address]);
+  }, [tokenContract, prizeType, address, validateContract]);
 
   const handleApprove = async () => {
     if (!isConnected || !tokenContract) return;
@@ -608,14 +608,12 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                         >
                           <div className="aspect-square bg-gray-700 rounded-lg mb-2 overflow-hidden">
                             {nft.image ? (
-                              <img
+                              <Image
                                 src={nft.image}
                                 alt={nft.name}
+                                width={64}
+                                height={64}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                }}
                               />
                             ) : null}
                             {!nft.image && (
@@ -660,7 +658,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                     prizeType === 'ERC20' 
                       ? `e.g., ${amount} ${tokenSymbol} tokens` 
                       : selectedTokenId 
-                        ? `e.g., ${userNFTs.find(nft => nft.tokenId === selectedTokenId)?.name || `Token #${selectedTokenId}`}`
+                        ? `e.g., Selected NFT #${selectedTokenId}`
                         : 'e.g., Rare NFT collectible'
                   }
                   className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"

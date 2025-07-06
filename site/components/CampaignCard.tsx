@@ -77,14 +77,24 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
   useEffect(() => {
     if (campaignPrizes) {
       // Convert the contract response to our Prize interface
-      const convertedPrizes: Prize[] = (campaignPrizes as any[]).map((prize: any) => ({
-        prizeType: prize.prizeType,
-        tokenContract: prize.tokenContract,
-        tokenId: prize.tokenId.toString(),
-        amount: prize.amount.toString(),
-        depositor: prize.depositor,
-        description: prize.description,
-      }));
+      const convertedPrizes: Prize[] = (campaignPrizes as unknown[]).map((prize: unknown) => {
+        const prizeData = prize as {
+          prizeType: number;
+          tokenContract: string;
+          tokenId: bigint;
+          amount: bigint;
+          depositor: string;
+          description: string;
+        };
+        return {
+          prizeType: prizeData.prizeType,
+          tokenContract: prizeData.tokenContract,
+          tokenId: prizeData.tokenId.toString(),
+          amount: prizeData.amount.toString(),
+          depositor: prizeData.depositor,
+          description: prizeData.description,
+        };
+      });
       setPrizes(convertedPrizes);
     }
   }, [campaignPrizes]);
