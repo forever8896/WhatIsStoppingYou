@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAccount, useReadContract } from 'wagmi';
 import { formatEther } from 'viem';
@@ -82,6 +82,38 @@ export default function LeaderboardPage() {
     chainId: saigon.id,
   });
 
+  const generateBadges = useCallback((address: string, pledgeCount: number, totalPledged: string): string[] => {
+    const badges = [];
+    const totalPledgedBigInt = BigInt(totalPledged);
+    const oneRON = BigInt('1000000000000000000'); // 1 RON in wei
+    
+    // Rank-based badges
+    const entry = leaderboard.find(e => e.address === address);
+    if (entry) {
+      if (entry.rank === 1) badges.push('👑');
+      else if (entry.rank === 2) badges.push('🥈');
+      else if (entry.rank === 3) badges.push('🥉');
+      else if (entry.rank <= 10) badges.push('🏆');
+    }
+    
+    // Amount-based badges
+    if (totalPledgedBigInt >= oneRON * BigInt(10)) badges.push('🐋'); // Whale (10+ RON)
+    else if (totalPledgedBigInt >= oneRON * BigInt(5)) badges.push('🦈'); // Big fish (5+ RON)
+    else if (totalPledgedBigInt >= oneRON) badges.push('🐠'); // Fish (1+ RON)
+    
+    // Activity-based badges
+    if (pledgeCount >= 20) badges.push('🔥'); // Very active
+    else if (pledgeCount >= 10) badges.push('⭐'); // Active
+    else if (pledgeCount >= 5) badges.push('💎'); // Regular
+    
+    // Address-based badges for variety
+    const hash = parseInt(address.slice(-4), 16);
+    if (hash % 17 === 0) badges.push('🚀'); // Rocket
+    if (hash % 13 === 0) badges.push('✨'); // Sparkles
+    
+    return badges.length > 0 ? badges : ['💫'];
+  }, [leaderboard]);
+
   // Fetch leaderboard data from API
   useEffect(() => {
     const fetchLeaderboardData = async () => {
@@ -121,38 +153,6 @@ export default function LeaderboardPage() {
   useEffect(() => {
     preloadSounds();
   }, [preloadSounds]);
-
-  const generateBadges = (address: string, pledgeCount: number, totalPledged: string): string[] => {
-    const badges = [];
-    const totalPledgedBigInt = BigInt(totalPledged);
-    const oneRON = BigInt('1000000000000000000'); // 1 RON in wei
-    
-    // Rank-based badges
-    const entry = leaderboard.find(e => e.address === address);
-    if (entry) {
-      if (entry.rank === 1) badges.push('👑');
-      else if (entry.rank === 2) badges.push('🥈');
-      else if (entry.rank === 3) badges.push('🥉');
-      else if (entry.rank <= 10) badges.push('🏆');
-    }
-    
-    // Amount-based badges
-    if (totalPledgedBigInt >= oneRON * BigInt(10)) badges.push('🐋'); // Whale (10+ RON)
-    else if (totalPledgedBigInt >= oneRON * BigInt(5)) badges.push('🦈'); // Big fish (5+ RON)
-    else if (totalPledgedBigInt >= oneRON) badges.push('🐠'); // Fish (1+ RON)
-    
-    // Activity-based badges
-    if (pledgeCount >= 20) badges.push('🔥'); // Very active
-    else if (pledgeCount >= 10) badges.push('⭐'); // Active
-    else if (pledgeCount >= 5) badges.push('💎'); // Regular
-    
-    // Address-based badges for variety
-    const hash = parseInt(address.slice(-4), 16);
-    if (hash % 17 === 0) badges.push('🚀'); // Rocket
-    if (hash % 13 === 0) badges.push('✨'); // Sparkles
-    
-    return badges.length > 0 ? badges : ['💫'];
-  };
 
   const getRankColor = (rank: number) => {
     switch (rank) {
