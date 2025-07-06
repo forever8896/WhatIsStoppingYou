@@ -9,6 +9,8 @@ import { parseEther } from 'viem';
 import { saigon } from 'viem/chains';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import Link from 'next/link';
+import { useSounds } from '@/hooks/useSounds';
+import SoundControl from '@/components/SoundControl';
 
 // Walrus API endpoints
 const WALRUS_PUBLISHER = 'https://publisher.walrus-testnet.walrus.space';
@@ -30,11 +32,17 @@ export default function CreatePage() {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const router = useRouter();
   const { isConnected, address } = useAccount();
+  const { playSound, preloadSounds } = useSounds();
   
   const { data: hash, writeContract, error, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Preload sounds on component mount
+  useEffect(() => {
+    preloadSounds();
+  }, [preloadSounds]);
 
   // Generate floating emojis
   useEffect(() => {
@@ -56,11 +64,12 @@ export default function CreatePage() {
   useEffect(() => {
     if (isConfirmed) {
       setShowSuccessAnimation(true);
+      playSound('success'); // Play success sound
       setTimeout(() => {
         router.push('/campaigns');
       }, 3000);
     }
-  }, [isConfirmed, router]);
+  }, [isConfirmed, router, playSound]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -140,6 +149,7 @@ export default function CreatePage() {
       }
       
       setFormData(prev => ({ ...prev, imageUrl }));
+      playSound('coin'); // Play coin sound for successful upload
       
     } catch (error) {
       console.error('Error uploading to Walrus:', error);
@@ -322,6 +332,7 @@ export default function CreatePage() {
             <Link href="/leaderboard" className="text-white/70 hover:text-white transition-colors">
               Leaderboard
             </Link>
+            <SoundControl />
             <TantoConnectButton />
           </div>
         </div>

@@ -7,6 +7,7 @@ import { parseEther, parseUnits, Address, createPublicClient, http } from 'viem'
 import { saigon } from 'viem/chains';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
+import { useSounds } from '@/hooks/useSounds';
 
 interface PrizeSponsorModalProps {
   campaignId: number;
@@ -129,6 +130,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
   const [nftBalance, setNftBalance] = useState(0);
 
   const { isConnected, address } = useAccount();
+  const { playSound, preloadSounds } = useSounds();
   
   const { data: approveHash, writeContract: writeApprove, isPending: isApproving } = useWriteContract();
   const { data: depositHash, writeContract: writeDeposit, isPending: isDepositing } = useWriteContract();
@@ -287,22 +289,26 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     }
   };
 
-  // Handle successful approve
+  // Preload sounds on component mount
   useEffect(() => {
-    if (isApproveConfirmed) {
-      setStep('deposit');
-    }
-  }, [isApproveConfirmed]);
+    preloadSounds();
+  }, [preloadSounds]);
 
   // Handle successful deposit
   useEffect(() => {
     if (isDepositConfirmed) {
-      // Add a small delay to ensure the transaction is fully processed
-      setTimeout(() => {
-        onSuccess();
-      }, 1000);
+      playSound('success'); // Play success sound for prize sponsorship
+      onSuccess();
     }
-  }, [isDepositConfirmed, onSuccess]);
+  }, [isDepositConfirmed, onSuccess, playSound]);
+
+  // Handle successful approval
+  useEffect(() => {
+    if (isApproveConfirmed) {
+      playSound('coin'); // Play coin sound for approval
+      setStep('deposit');
+    }
+  }, [isApproveConfirmed, playSound]);
 
   const validateContract = async () => {
     if (!tokenContract || !address) return;
@@ -424,6 +430,11 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     } catch {
       return '0';
     }
+  };
+
+  const handleNFTSelect = (tokenId: string) => {
+    setSelectedTokenId(tokenId);
+    playSound('coin'); // Play sound when selecting NFT
   };
 
   return (
@@ -586,7 +597,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                       {userNFTs.map((nft) => (
                         <motion.button
                           key={nft.tokenId}
-                          onClick={() => setSelectedTokenId(nft.tokenId)}
+                          onClick={() => handleNFTSelect(nft.tokenId)}
                           className={`p-3 rounded-xl border-2 transition-all ${
                             selectedTokenId === nft.tokenId
                               ? 'border-purple-500 bg-purple-500/20'

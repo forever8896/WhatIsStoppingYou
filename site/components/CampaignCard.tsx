@@ -8,6 +8,7 @@ import { saigon } from 'viem/chains';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
 import PrizeSponsorModal from './PrizeSponsorModal';
+import { useSounds } from '@/hooks/useSounds';
 
 interface SerializedCampaign {
   creator: string;
@@ -50,6 +51,7 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const { isConnected, address } = useAccount();
+  const { playSound, preloadSounds } = useSounds();
 
   const { data: pledgeHash, writeContract: pledgeContract, isPending: isPledging } = useWriteContract();
   const { data: endCampaignHash, writeContract: endCampaignContract, isPending: isEndingCampaign } = useWriteContract();
@@ -87,6 +89,11 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
     }
   }, [campaignPrizes]);
 
+  // Preload sounds on component mount
+  useEffect(() => {
+    preloadSounds();
+  }, [preloadSounds]);
+
   const handlePledge = async () => {
     if (!isConnected || !pledgeAmount) return;
     
@@ -114,20 +121,27 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
     });
   };
 
+  const handleSponsorClick = () => {
+    setShowSponsorModal(true);
+    playSound('coin');
+  };
+
   // Handle successful pledge
   useEffect(() => {
     if (isPledgeConfirmed) {
       setPledgeAmount('');
+      playSound('success'); // Play success sound for pledge
       onPledgeSuccess?.();
     }
-  }, [isPledgeConfirmed, onPledgeSuccess]);
+  }, [isPledgeConfirmed, onPledgeSuccess, playSound]);
 
   // Handle successful campaign end
   useEffect(() => {
     if (isEndConfirmed) {
+      playSound('success'); // Play success sound for campaign end
       onPledgeSuccess?.(); // Refresh campaign data
     }
-  }, [isEndConfirmed, onPledgeSuccess]);
+  }, [isEndConfirmed, onPledgeSuccess, playSound]);
 
   const getProgressPercentage = () => {
     const pledgedNum = Number(campaign.pledged || '0');
@@ -410,7 +424,7 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
           {/* Sponsor Prize Button */}
           {campaign.active && !campaign.ended && (
             <motion.button
-              onClick={() => setShowSponsorModal(true)}
+              onClick={handleSponsorClick}
               className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-semibold hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-yellow-500/25"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

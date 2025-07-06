@@ -8,6 +8,8 @@ import { saigon } from 'viem/chains';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI, SOULBOUND_NFT_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
 import Link from 'next/link';
+import { useSounds } from '@/hooks/useSounds';
+import SoundControl from '@/components/SoundControl';
 
 interface NFTData {
   tokenId: number;
@@ -69,6 +71,7 @@ export default function LeaderboardPage() {
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
   const [selectedUser, setSelectedUser] = useState<LeaderboardEntry | null>(null);
   const [searchAddress, setSearchAddress] = useState('');
+  const { playSound, preloadSounds } = useSounds();
 
   // Get NFT contract address
   const { data: nftContractAddress } = useReadContract({
@@ -121,6 +124,11 @@ export default function LeaderboardPage() {
 
     fetchLeaderboardData();
   }, []);
+
+  // Preload sounds on component mount
+  useEffect(() => {
+    preloadSounds();
+  }, [preloadSounds]);
 
   const generateBadges = (address: string, pledgeCount: number, totalPledged: string): string[] => {
     const badges = [];
@@ -223,6 +231,11 @@ export default function LeaderboardPage() {
 
   const filteredLeaderboard = getFilteredAndSortedLeaderboard();
 
+  const handleUserClick = (entry: LeaderboardEntry) => {
+    setSelectedUser(entry);
+    playSound('coin'); // Play sound when opening user profile
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-blue-900">
       {/* Navbar */}
@@ -249,6 +262,7 @@ export default function LeaderboardPage() {
               <span className="text-purple-400 font-semibold">
                 Leaderboard
               </span>
+              <SoundControl />
               <TantoConnectButton />
             </div>
           </div>
@@ -383,7 +397,7 @@ export default function LeaderboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={`bg-gradient-to-r ${getRankColor(entry.rank)} p-[1px] rounded-2xl cursor-pointer`}
-                onClick={() => setSelectedUser(entry)}
+                onClick={() => handleUserClick(entry)}
               >
                 <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-6 hover:bg-black/70 transition-colors">
                   <div className="flex items-center justify-between">

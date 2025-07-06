@@ -16,6 +16,8 @@ import CampaignCard from '@/components/CampaignCard';
 import DailyRaffleWidget from '@/components/DailyRaffleWidget';
 import { Address } from 'viem';
 import Link from 'next/link';
+import { useSounds } from '@/hooks/useSounds';
+import SoundControl from '@/components/SoundControl';
 
 interface SerializedCampaign {
   creator: string;
@@ -70,6 +72,7 @@ export default function CampaignsPage() {
   
   const router = useRouter();
   const { isConnected } = useAccount();
+  const { playSound, preloadSounds } = useSounds();
 
   // Get platform data
   const { data: campaignCount, refetch: refetchCampaignCount } = useReadContract({
@@ -103,42 +106,10 @@ export default function CampaignsPage() {
     });
   }, [totalPledged, dailyRafflePool, campaignCount]);
 
-  // Sound effects
-  const playSound = useCallback((type: 'pledge' | 'win' | 'raffle') => {
-    if (!soundEnabled) return;
-    
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      switch (type) {
-        case 'pledge':
-          oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.2);
-          break;
-        case 'win':
-          oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(1046.5, audioContext.currentTime + 0.5);
-          break;
-        case 'raffle':
-          oscillator.frequency.setValueAtTime(293.66, audioContext.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(587.33, audioContext.currentTime + 0.3);
-          break;
-      }
-      
-      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (error) {
-      console.log('Audio context not available:', error);
-    }
-  }, [soundEnabled]);
+  // Preload sounds on component mount
+  useEffect(() => {
+    preloadSounds();
+  }, [preloadSounds]);
 
   // Particle effect trigger
   const triggerParticles = useCallback((type: 'win' | 'pledge' | 'raffle') => {
@@ -339,16 +310,22 @@ export default function CampaignsPage() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-6"
           >
-            <Link href="/create" className="text-white/70 hover:text-white transition-colors">
-              Create
-            </Link>
-            <Link href="/leaderboard" className="text-white/70 hover:text-white transition-colors">
-              Leaderboard
-            </Link>
-            <span className="text-purple-400 font-semibold">
-              Campaigns
-            </span>
-            <TantoConnectButton />
+            <div className="flex items-center space-x-6">
+              <Link href="/" className="text-white/70 hover:text-white transition-colors">
+                Home
+              </Link>
+              <Link href="/create" className="text-white/70 hover:text-white transition-colors">
+                Create
+              </Link>
+              <Link href="/leaderboard" className="text-white/70 hover:text-white transition-colors">
+                Leaderboard
+              </Link>
+              <span className="text-purple-400 font-semibold">
+                Campaigns
+              </span>
+              <SoundControl />
+              <TantoConnectButton />
+            </div>
           </motion.div>
         </div>
       </nav>

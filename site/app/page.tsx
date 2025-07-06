@@ -4,10 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useSounds } from '@/hooks/useSounds';
+import SoundControl from '@/components/SoundControl';
 
 export default function Home() {
   const [activeFeature, setActiveFeature] = useState(0);
   const router = useRouter();
+  const { playSound, preloadSounds } = useSounds();
 
   // Refs for scroll animations
   const heroRef = useRef(null);
@@ -24,6 +27,11 @@ export default function Home() {
   const isHowItWorksInView = useInView(howItWorksRef, { once: true, margin: "-50px" });
   const isValueInView = useInView(valueRef, { once: true, margin: "-50px" });
   const isCtaInView = useInView(ctaRef, { once: true, margin: "-50px" });
+
+  // Preload sounds on component mount
+  useEffect(() => {
+    preloadSounds();
+  }, [preloadSounds]);
 
   // Auto-rotate features
   useEffect(() => {
@@ -53,6 +61,16 @@ export default function Home() {
       detail: 'Random winners selected every 24 hours'
     }
   ];
+
+  const handleCreateCampaign = () => {
+    playSound('coin');
+    router.push('/create');
+  };
+
+  const handleBrowseProjects = () => {
+    playSound('coin');
+    router.push('/campaigns');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
@@ -114,6 +132,7 @@ export default function Home() {
             <Link href="/leaderboard" className="text-white/70 hover:text-white transition-colors">
               Leaderboard
             </Link>
+            <SoundControl />
           </motion.div>
         </div>
       </nav>
@@ -162,7 +181,7 @@ export default function Home() {
             transition={{ delay: 0.6, duration: 0.8 }}
           >
             <motion.button
-              onClick={() => router.push('/create')}
+              onClick={handleCreateCampaign}
               className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-purple-500/25"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -170,7 +189,7 @@ export default function Home() {
               🚀 Start a Campaign
             </motion.button>
             <motion.button
-              onClick={() => router.push('/campaigns')}
+              onClick={handleBrowseProjects}
               className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-xl font-bold text-lg hover:bg-white/20 transition-all border border-white/20"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -416,7 +435,7 @@ export default function Home() {
               transition={{ delay: 0.8, duration: 0.6 }}
             >
               <motion.button
-                onClick={() => router.push('/create')}
+                onClick={handleCreateCampaign}
                 className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -424,7 +443,7 @@ export default function Home() {
                 🚀 Create Campaign
               </motion.button>
               <motion.button
-                onClick={() => router.push('/campaigns')}
+                onClick={handleBrowseProjects}
                 className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-xl font-bold text-lg hover:bg-white/20 transition-all border border-white/20"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
