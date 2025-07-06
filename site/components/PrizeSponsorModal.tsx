@@ -3,12 +3,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { formatEther, parseEther, parseUnits, Address } from 'viem';
+import { formatEther, parseEther, parseUnits, Address, createPublicClient, http } from 'viem';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
 import { useSounds } from '@/hooks/useSounds';
 import Image from 'next/image';
 import { saigon } from 'viem/chains';
+
+// Create public client for contract interactions
+const publicClient = createPublicClient({
+  chain: saigon,
+  transport: http('https://saigon-testnet.roninchain.com/rpc'),
+});
 
 interface PrizeSponsorModalProps {
   campaignId: number;
