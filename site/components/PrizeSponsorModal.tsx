@@ -8,6 +8,7 @@ import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
 import { useSounds } from '@/hooks/useSounds';
 import Image from 'next/image';
+import { saigon } from 'viem/chains';
 
 interface PrizeSponsorModalProps {
   campaignId: number;
