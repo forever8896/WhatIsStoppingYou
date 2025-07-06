@@ -1,5 +1,5 @@
 {
-  "name": "whatsstoppingyou-contracts",
+  "name": "Helpify-contracts",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,7 @@
   "keywords": ["smart-contracts", "ronin", "crowdfunding"],
   "author": "",
   "license": "MIT",
-  "description": "Smart contracts for WhatsStoppingYou crowdfunding platform",
+  "description": "Smart contracts for Helpify crowdfunding platform",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "hardhat": "^2.19.0"

@@ -146,7 +146,7 @@ export default function WhyPage() {
               fontWeight: 900,
             }}
           >
-            <span className="relative z-10">WhatsStoppingYou</span>
+            <span className="relative z-10">Helpify</span>
             <motion.div
               className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg opacity-20 blur"
               animate={{

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WhatsStoppingYou",
+  title: "Helpify",
   description: "Ronin-native crowdfunding platform",
 };
 

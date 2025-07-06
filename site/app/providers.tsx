@@ -7,10 +7,10 @@ import { ronin, saigon } from 'viem/chains';
 
 const config = getDefaultConfig({
     appMetadata: {
-      appName: 'WhatsStoppingYou',
+      appName: 'Helpify',
       appIcon: 'https://via.placeholder.com/256x256?text=WSY',
       appDescription: 'A decentralized crowdfunding platform on Ronin',
-      appUrl: 'https://whatsstoppingyou.com',
+      appUrl: 'https://Helpify.com',
     },
     keylessWalletConfig: {
       chainId: 2021, // Saigon Testnet

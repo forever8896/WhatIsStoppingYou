@@ -1,4 +1,4 @@
-# VRF Integration Fix for WhatsStoppingYou
+# VRF Integration Fix for Helpify
 
 ## Issues Fixed
 
