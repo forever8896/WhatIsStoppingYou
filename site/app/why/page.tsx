@@ -217,7 +217,7 @@ export default function WhyPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.6 }}
             >
-              We're revolutionizing crowdfunding by combining the generosity of donations with the excitement of casino mechanics
+              We&apos;re revolutionizing crowdfunding by combining the generosity of donations with the excitement of casino mechanics
             </motion.p>
             <motion.div
               className="flex justify-center gap-6 text-4xl"

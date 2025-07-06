@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseEther, formatEther, Address } from 'viem';
+import { parseEther, formatEther } from 'viem';
 import { saigon } from 'viem/chains';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';

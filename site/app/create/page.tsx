@@ -11,6 +11,7 @@ import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import Link from 'next/link';
 import { useSounds } from '@/hooks/useSounds';
 import SoundControl from '@/components/SoundControl';
+import Image from 'next/image';
 
 // Walrus API endpoints
 const WALRUS_PUBLISHER = 'https://publisher.walrus-testnet.walrus.space';
@@ -684,10 +685,12 @@ export default function CreatePage() {
                       <div className="text-white/70 text-sm mb-2">Preview:</div>
                       <div className="space-y-2">
                         <div className="relative">
-                          <img
+                          <Image
                             src={formData.imageUrl}
                             alt="Campaign preview"
                             className="w-full h-48 object-contain rounded-lg bg-white/10"
+                            width={400}
+                            height={200}
                             onError={(e) => {
                               console.error('Image failed to load:', formData.imageUrl);
                               const target = e.target as HTMLImageElement;

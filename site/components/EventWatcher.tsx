@@ -44,7 +44,9 @@ export default function EventWatcher({
     address: CONTRACTS.PLEDGE_TO_CREATE,
     abi: PLEDGE_TO_CREATE_ABI,
     eventName: 'PledgeMade',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onLogs: useCallback((logs: any[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       logs.forEach((log: any) => {
         const { campaignId, pledger, amount, nftTokenId } = log.args;
         if (pledger && amount && campaignId) {
@@ -79,7 +81,9 @@ export default function EventWatcher({
     address: CONTRACTS.PLEDGE_TO_CREATE,
     abi: PLEDGE_TO_CREATE_ABI,
     eventName: 'CampaignPrizeWinner',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onLogs: useCallback((logs: any[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       logs.forEach((log: any) => {
         const { campaignId, winner, prizeIndex } = log.args;
         if (winner && prizeIndex !== undefined && campaignId) {
@@ -112,7 +116,9 @@ export default function EventWatcher({
     address: CONTRACTS.PLEDGE_TO_CREATE,
     abi: PLEDGE_TO_CREATE_ABI,
     eventName: 'DailyRaffleWinner',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onLogs: useCallback((logs: any[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       logs.forEach((log: any) => {
         const { day, winner, prize } = log.args;
         if (winner && prize && day) {
@@ -145,7 +151,9 @@ export default function EventWatcher({
     address: CONTRACTS.PLEDGE_TO_CREATE,
     abi: PLEDGE_TO_CREATE_ABI,
     eventName: 'CampaignRaffleRequested',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onLogs: useCallback((logs: any[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       logs.forEach((log: any) => {
         const { campaignId } = log.args;
         if (campaignId) {
@@ -172,7 +180,9 @@ export default function EventWatcher({
     address: CONTRACTS.PLEDGE_TO_CREATE,
     abi: PLEDGE_TO_CREATE_ABI,
     eventName: 'CampaignCreated',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onLogs: useCallback((logs: any[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       logs.forEach((log: any) => {
         const { campaignId, creator, title, goal } = log.args;
         if (campaignId && creator && title && goal) {

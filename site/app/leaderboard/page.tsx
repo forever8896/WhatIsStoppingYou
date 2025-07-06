@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAccount, useReadContract } from 'wagmi';
 import { formatEther } from 'viem';
 import { saigon } from 'viem/chains';
-import { CONTRACTS, PLEDGE_TO_CREATE_ABI, SOULBOUND_NFT_ABI } from '@/lib/contracts';
+import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
 import Link from 'next/link';
 import { useSounds } from '@/hooks/useSounds';
@@ -73,14 +73,6 @@ export default function LeaderboardPage() {
   const [searchAddress, setSearchAddress] = useState('');
   const { playSound, preloadSounds } = useSounds();
 
-  // Get NFT contract address
-  const { data: nftContractAddress } = useReadContract({
-    address: CONTRACTS.PLEDGE_TO_CREATE,
-    abi: PLEDGE_TO_CREATE_ABI,
-    functionName: 'getNFTContract',
-    chainId: saigon.id,
-  });
-
   // Get total pledged for current user
   const { data: userTotalPledged } = useReadContract({
     address: CONTRACTS.PLEDGE_TO_CREATE,
@@ -123,7 +115,7 @@ export default function LeaderboardPage() {
     };
 
     fetchLeaderboardData();
-  }, []);
+  }, [generateBadges]);
 
   // Preload sounds on component mount
   useEffect(() => {
@@ -630,7 +622,7 @@ export default function LeaderboardPage() {
                 <div className="text-center py-8 mb-6">
                   <div className="text-6xl mb-4 opacity-50">🎨</div>
                   <p className="text-white/60 text-lg">No NFTs found</p>
-                  <p className="text-white/40 text-sm mt-2">This user hasn't made any pledges yet</p>
+                  <p className="text-white/40 text-sm mt-2">This user hasn&apos;t made any pledges yet</p>
                 </div>
               )}
 
