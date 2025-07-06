@@ -2,14 +2,14 @@ import { Address } from 'viem';
 
 // Contract addresses on Saigon testnet
 export const CONTRACTS = {
-  PLEDGE_TO_CREATE: '0x08E1B1dbA7ccdF94A38906c5ad6bB346E696087F' as Address,
-  SOULBOUND_PLEDGE_NFT: '0xdC33A0596a5AdE0B113dee32da13388279f6205e' as Address,
+  PLEDGE_TO_CREATE: '0xd710d18c2BD7aD2C15E64B18F43891918d571BA8' as Address,
+  SOULBOUND_PLEDGE_NFT: '0x593AE110165F69F915015225a04035CA82a52717' as Address,
   VRF_COORDINATOR: '0xa60c1e07fa030e4b49eb54950adb298ab94dd312' as Address,
 } as const;
 
-// Complete ABI matching the actual contract structure
+// Complete ABI matching the updated contract structure
 export const PLEDGE_TO_CREATE_ABI = [
-  // Campaign struct with all fields
+  // Constructor
   {
     "inputs": [
       {
@@ -21,6 +21,7 @@ export const PLEDGE_TO_CREATE_ABI = [
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
+  // Errors
   {
     "inputs": [],
     "name": "OnlyCoordinatorCanFulfill",
@@ -53,6 +54,7 @@ export const PLEDGE_TO_CREATE_ABI = [
     "name": "ReentrancyGuardReentrantCall",
     "type": "error"
   },
+  // Events
   {
     "anonymous": false,
     "inputs": [
@@ -98,15 +100,22 @@ export const PLEDGE_TO_CREATE_ABI = [
         "internalType": "uint256",
         "name": "campaignId",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "requestHash",
-        "type": "bytes32"
       }
     ],
-    "name": "CampaignRaffleRequested",
+    "name": "CampaignEnded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "CampaignPrizesCompleted",
     "type": "event"
   },
   {
@@ -127,11 +136,30 @@ export const PLEDGE_TO_CREATE_ABI = [
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "prize",
+        "name": "prizeIndex",
         "type": "uint256"
       }
     ],
-    "name": "CampaignRaffleWinner",
+    "name": "CampaignPrizeWinner",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "requestHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "CampaignRaffleRequested",
     "type": "event"
   },
   {
@@ -200,7 +228,51 @@ export const PLEDGE_TO_CREATE_ABI = [
         "type": "uint256"
       }
     ],
+    "name": "DailyRaffleTransferFailed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "day",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "winner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "prize",
+        "type": "uint256"
+      }
+    ],
     "name": "DailyRaffleWinner",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "EmergencyWithdrawal",
     "type": "event"
   },
   {
@@ -260,6 +332,88 @@ export const PLEDGE_TO_CREATE_ABI = [
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum PledgeToCreate.PrizeType",
+        "name": "prizeType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "tokenContract",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "PrizeDeposited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "prizeIndex",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "winner",
+        "type": "address"
+      }
+    ],
+    "name": "PrizeTransferFailed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "funder",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "VRFFunded",
+    "type": "event"
+  },
+  // Functions
+  {
     "inputs": [],
     "name": "campaignCount",
     "outputs": [
@@ -291,6 +445,55 @@ export const PLEDGE_TO_CREATE_ABI = [
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "campaignPrizes",
+    "outputs": [
+      {
+        "internalType": "enum PledgeToCreate.PrizeType",
+        "name": "prizeType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "tokenContract",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "depositor",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -352,14 +555,14 @@ export const PLEDGE_TO_CREATE_ABI = [
         "type": "bool"
       },
       {
-        "internalType": "uint256",
-        "name": "nextRaffleMilestone",
-        "type": "uint256"
+        "internalType": "bool",
+        "name": "ended",
+        "type": "bool"
       },
       {
-        "internalType": "uint256",
-        "name": "rafflePrize",
-        "type": "uint256"
+        "internalType": "bool",
+        "name": "prizesClaimed",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -440,10 +643,93 @@ export const PLEDGE_TO_CREATE_ABI = [
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "day",
+        "name": "_campaignId",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_tokenContract",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
       }
     ],
+    "name": "depositERC1155Prize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_campaignId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_tokenContract",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
+      }
+    ],
+    "name": "depositERC20Prize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_campaignId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_tokenContract",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
+      }
+    ],
+    "name": "depositERC721Prize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "drawDailyRaffle",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -451,7 +737,117 @@ export const PLEDGE_TO_CREATE_ABI = [
   },
   {
     "inputs": [],
-    "name": "gasPrice",
+    "name": "emergencyWithdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "endCampaign",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "estimateVRFRequestFee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fundForVRF",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCampaignPrizeCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCampaignPrizes",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "enum PledgeToCreate.PrizeType",
+            "name": "prizeType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "tokenContract",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "depositor",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct PledgeToCreate.Prize[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getGasPrice",
     "outputs": [
       {
         "internalType": "uint256",
@@ -504,32 +900,6 @@ export const PLEDGE_TO_CREATE_ABI = [
   {
     "inputs": [],
     "name": "platformFeePercentage",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "platformProfit",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "platformRevenue",
     "outputs": [
       {
         "internalType": "uint256",
@@ -762,12 +1132,25 @@ export const PLEDGE_TO_CREATE_ABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "withdrawCampaignFunds",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "stateMutability": "payable",
     "type": "receive"
   }
 ] as const;
 
-// Updated Campaign type definition to match the contract
+// Updated Campaign type definition to match the new contract structure
 export interface Campaign {
   creator: Address;
   title: string;
@@ -778,8 +1161,18 @@ export interface Campaign {
   createdAt: bigint;
   withdrawn: boolean;
   active: boolean;
-  nextRaffleMilestone: bigint;
-  rafflePrize: bigint;
+  ended: boolean;
+  prizesClaimed: boolean;
+}
+
+// Prize type definition
+export interface Prize {
+  prizeType: number; // 0: ERC20, 1: ERC721, 2: ERC1155
+  tokenContract: Address;
+  tokenId: bigint;
+  amount: bigint;
+  depositor: Address;
+  description: string;
 }
 
 // Pledge type definition

@@ -1,620 +1,441 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  const [phase, setPhase] = useState<'initial' | 'typing' | 'complete' | 'fadeOut' | 'casino' | 'donation' | 'ask'>('initial');
-  const [displayText, setDisplayText] = useState('');
-  const [showNavbar, setShowNavbar] = useState(false);
-  const [floatingNumbers, setFloatingNumbers] = useState<Array<{id: number, value: string, x: number, y: number}>>([]);
+  const [activeFeature, setActiveFeature] = useState(0);
   const router = useRouter();
-  
-  const initialText = "What's Stopping You?";
-  
-  // Generate floating numbers for casino effect
+
+  // Refs for scroll animations
+  const heroRef = useRef(null);
+  const problemRef = useRef(null);
+  const solutionRef = useRef(null);
+  const howItWorksRef = useRef(null);
+  const valueRef = useRef(null);
+  const ctaRef = useRef(null);
+
+  // InView hooks with better settings
+  const isHeroInView = useInView(heroRef, { once: true, margin: "-50px" });
+  const isProblemInView = useInView(problemRef, { once: true, margin: "-50px" });
+  const isSolutionInView = useInView(solutionRef, { once: true, margin: "-50px" });
+  const isHowItWorksInView = useInView(howItWorksRef, { once: true, margin: "-50px" });
+  const isValueInView = useInView(valueRef, { once: true, margin: "-50px" });
+  const isCtaInView = useInView(ctaRef, { once: true, margin: "-50px" });
+
+  // Auto-rotate features
   useEffect(() => {
     const interval = setInterval(() => {
-      if (phase === 'casino' || phase === 'donation' || phase === 'ask') {
-        const casinoElements = ['🎰', '💰', '🎲', '💎', '🎯', '🃏', '🎊', '🎉'];
-        const newNumber = {
-          id: Date.now() + Math.random(),
-          value: Math.random() > 0.7 ? `+${Math.floor(Math.random() * 100)}` : casinoElements[Math.floor(Math.random() * casinoElements.length)],
-          x: Math.random() * 100,
-          y: Math.random() * 100
-        };
-        setFloatingNumbers(prev => [...prev.slice(-8), newNumber]);
-      }
-    }, 1200);
-    
+      setActiveFeature((prev) => (prev + 1) % 3);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [phase]);
-  
-  useEffect(() => {
-    const sequence = async () => {
-      // Initial delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Start typing
-      setPhase('typing');
-      
-      // Type each character
-      for (let i = 0; i <= initialText.length; i++) {
-        setDisplayText(initialText.slice(0, i));
-        await new Promise(resolve => setTimeout(resolve, 80));
-      }
-      
-      setPhase('complete');
-      
-      // Wait before fade out
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Fade out
-      setPhase('fadeOut');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Show CASINO
-      setPhase('casino');
-      
-      // Wait before showing DONATION
-      await new Promise(resolve => setTimeout(resolve, 3500));
-      
-      // Show DONATION
-      setPhase('donation');
-      
-      // Wait before showing ASK
-      await new Promise(resolve => setTimeout(resolve, 4000));
-      
-      // Show ASK
-      setPhase('ask');
-      
-      // Wait before showing navbar
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Show navbar
-      setShowNavbar(true);
-    };
-    
-    sequence();
   }, []);
 
-  const handleAskClick = () => {
-    router.push('/create');
-  };
-
-  const handleNavClick = (path: string) => {
-    router.push(path);
-  };
+  const features = [
+    {
+      icon: '🎯',
+      title: 'Create Campaigns',
+      description: 'Launch your project and get funded',
+      detail: 'Turn your ideas into reality with community support'
+    },
+    {
+      icon: '🎰',
+      title: 'Win Prizes',
+      description: 'Every donation = chance to win',
+      detail: 'Sponsors add NFTs, tokens, and exclusive rewards'
+    },
+    {
+      icon: '💰',
+      title: 'Daily Rewards',
+      description: 'Daily prize draws for recent donors',
+      detail: 'Random winners selected every 24 hours'
+    }
+  ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center overflow-hidden relative">
-      {/* Navbar */}
-      <AnimatePresence>
-        {showNavbar && (
-          <motion.nav
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="fixed top-0 left-0 right-0 z-50 p-6"
-          >
-            <div className="flex justify-between items-center max-w-7xl mx-auto">
-              {/* Logo/Brand */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-                className="text-2xl font-bold text-white cursor-pointer relative"
-                onClick={() => handleNavClick('/')}
-                style={{
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  fontWeight: 900,
-                }}
-              >
-                <span className="relative z-10">WhatsStoppingYou</span>
-                <motion.div
-                  className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg opacity-20 blur"
-                  animate={{
-                    opacity: [0.2, 0.4, 0.2],
-                    scale: [1, 1.05, 1],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                />
-              </motion.div>
-              
-              {/* Navigation Items */}
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
-                className="flex items-center gap-8"
-              >
-                <motion.button
-                  onClick={() => handleNavClick('/campaigns')}
-                  className="text-lg font-semibold text-white/80 hover:text-white transition-colors duration-300 relative group"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: 600,
-                  }}
-                >
-                  CAMPAIGNS
-                  <motion.div
-                    className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 group-hover:w-full transition-all duration-300"
-                    whileHover={{ width: '100%' }}
-                  />
-                </motion.button>
-                
-                <motion.button
-                  onClick={() => handleNavClick('/why')}
-                  className="text-lg font-semibold text-white/80 hover:text-white transition-colors duration-300 relative group"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: 600,
-                  }}
-                >
-                  WHY
-                  <motion.div
-                    className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 group-hover:w-full transition-all duration-300"
-                    whileHover={{ width: '100%' }}
-                  />
-                </motion.button>
-              </motion.div>
-            </div>
-          </motion.nav>
-        )}
-      </AnimatePresence>
-
-      {/* Consistent Moving Background */}
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
+      {/* Animated Background */}
       <div className="absolute inset-0">
-        {/* Deep space black base */}
-        <div className="absolute inset-0 bg-black" />
-        
-        {/* Consistent casino-themed animated background */}
-        <motion.div
-          className="absolute inset-0 opacity-15"
-          style={{
-            background: "radial-gradient(circle at 30% 70%, rgba(255, 215, 0, 0.2) 0%, transparent 50%), radial-gradient(circle at 70% 30%, rgba(255, 20, 147, 0.15) 0%, transparent 50%), radial-gradient(circle at 20% 20%, rgba(138, 43, 226, 0.1) 0%, transparent 50%)"
-          }}
-          animate={{
-            backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        />
-        
-        {/* Floating casino orbs that move consistently */}
-        {[...Array(8)].map((_, i) => (
+        <div className="absolute inset-0 bg-black/20" />
+        {[...Array(20)].map((_, i) => (
           <motion.div
-            key={`casino-orb-${i}`}
-            className="absolute rounded-full bg-gradient-to-br from-yellow-400/10 to-pink-500/10 backdrop-blur-sm border border-white/5"
+            key={i}
+            className="absolute rounded-full bg-gradient-to-br from-purple-400/10 to-pink-400/10 backdrop-blur-sm"
             style={{
-              width: `${Math.random() * 80 + 40}px`,
-              height: `${Math.random() * 80 + 40}px`,
+              width: `${Math.random() * 100 + 50}px`,
+              height: `${Math.random() * 100 + 50}px`,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
             }}
             animate={{
-              x: [0, Math.random() * 200 - 100, 0],
-              y: [0, Math.random() * 200 - 100, 0],
-              scale: [1, 1.3, 1],
+              x: [0, Math.random() * 100 - 50, 0],
+              y: [0, Math.random() * 100 - 50, 0],
               opacity: [0.1, 0.3, 0.1],
+              scale: [1, 1.2, 1],
             }}
             transition={{
-              duration: Math.random() * 15 + 10,
+              duration: Math.random() * 20 + 10,
               repeat: Infinity,
               ease: "easeInOut",
               delay: Math.random() * 5
             }}
           />
         ))}
-        
-        {/* Floating casino elements */}
-        <AnimatePresence>
-          {floatingNumbers.map((item) => (
-            <motion.div
-              key={item.id}
-              className="absolute text-2xl font-bold pointer-events-none emoji-preserve"
-              style={{
-                left: `${item.x}%`,
-                top: `${item.y}%`,
-                color: item.value.includes('+') ? '#fbbf24' : 'initial',
-              }}
-              initial={{ opacity: 0, scale: 0.5, y: 20 }}
-              animate={{ opacity: 0.6, scale: 1, y: -150 }}
-              exit={{ opacity: 0, scale: 0.5, y: -300 }}
-              transition={{ duration: 4, ease: "easeOut" }}
-            >
-              {item.value}
-            </motion.div>
-          ))}
-        </AnimatePresence>
       </div>
-      
-      <div className="relative text-center z-10">
-        <AnimatePresence mode="wait">
-          {/* Initial Question */}
-          {phase !== 'casino' && phase !== 'donation' && phase !== 'ask' && (
-            <motion.div
-              key="question"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: phase === 'fadeOut' ? 0 : 1 }}
-              exit={{ opacity: 0, scale: 0.8, y: -50 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="relative"
-            >
-              <div className="flex items-center justify-center flex-wrap">
-                {initialText.split('').map((char, index) => (
-                  <motion.span
-                    key={index}
-                    initial={{ opacity: 0, y: 50, scale: 0.8 }}
-                    animate={index < displayText.length ? 
-                      { opacity: 1, y: 0, scale: 1 } : 
-                      { opacity: 0, y: 50, scale: 0.8 }
-                    }
-                    transition={{ 
-                      type: "spring", 
-                      damping: 12, 
-                      stiffness: 200 
-                    }}
-                    className="text-5xl md:text-7xl lg:text-8xl font-bold text-white tracking-tight"
-                    style={{ 
-                      fontFamily: 'system-ui, -apple-system, sans-serif',
-                      fontWeight: 900,
-                      textShadow: '0 0 30px rgba(255,255,255,0.3)'
-                    }}
-                  >
-                    {char === ' ' ? '\u00A0' : char}
-                  </motion.span>
-                ))}
-                
-                {/* Animated cursor */}
-                {phase === 'typing' && (
-                  <motion.span
-                    animate={{
-                      opacity: [0, 0, 1, 1]
-                    }}
-                    transition={{
-                      duration: 1,
-                      repeat: Infinity,
-                      ease: "linear"
-                    }}
-                    className="text-5xl md:text-7xl lg:text-8xl font-bold text-white ml-2"
-                  >
-                    |
-                  </motion.span>
-                )}
-              </div>
-            </motion.div>
-          )}
+
+      {/* Navigation */}
+      <nav className="relative z-50 p-6">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-3xl font-bold text-white cursor-pointer flex items-center gap-2"
+            onClick={() => router.push('/')}
+          >
+            <span className="text-4xl">🚀</span>
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Helpify
+            </span>
+          </motion.div>
           
-          {/* CASINO Text - Story: The excitement begins */}
-          {phase === 'casino' && (
-            <motion.div
-              key="casino"
-              initial={{ opacity: 0, scale: 0.3, rotateY: -90, y: 100 }}
-              animate={{ opacity: 1, scale: 1, rotateY: 0, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, x: -100 }}
-              transition={{
-                type: "spring",
-                damping: 20,
-                stiffness: 300,
-                duration: 1.5
-              }}
-              className="relative"
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-6"
+          >
+            <button
+              onClick={() => router.push('/campaigns')}
+              className="text-white/80 hover:text-white transition-colors font-semibold"
             >
-              <div className="relative">
-                {/* Main CASINO text */}
-                <motion.h1 
-                  className="text-6xl md:text-8xl lg:text-[10rem] font-black bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 bg-clip-text text-transparent"
-                  style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: 900,
-                    letterSpacing: '-0.05em'
-                  }}
-                  animate={{
-                    textShadow: [
-                      '0 0 20px rgba(255,215,0,0.3)',
-                      '0 0 40px rgba(255,20,147,0.4)',
-                      '0 0 20px rgba(255,215,0,0.3)'
-                    ]
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
-                  <span className="emoji-preserve">🎰</span> CASINO
-                </motion.h1>
-                
-                {/* Neon glow effect */}
-                <motion.div
-                  className="absolute inset-0 text-6xl md:text-8xl lg:text-[10rem] font-black text-yellow-400 opacity-20 blur-2xl"
-                  animate={{
-                    scale: [1, 1.05, 1],
-                    opacity: [0.2, 0.4, 0.2]
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: 900,
-                    letterSpacing: '-0.05em'
-                  }}
-                >
-                  <span className="emoji-preserve">🎰</span> CASINO
-                </motion.div>
-                
-                {/* Casino symbols */}
-                {['💰', '🎲', '🃏', '💎', '🎯'].map((symbol, i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute text-4xl emoji-preserve"
-                    style={{
-                      left: `${20 + (i * 15)}%`,
-                      top: `${20 + (i % 2) * 60}%`,
-                    }}
-                    animate={{
-                      y: [0, -30, 0],
-                      rotate: [0, 360],
-                      opacity: [0.6, 1, 0.6],
-                      scale: [1, 1.2, 1]
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: i * 0.5
-                    }}
-                  >
-                    {symbol}
-                  </motion.div>
-                ))}
-              </div>
-              
-              {/* Story context */}
-              <motion.p
-                className="text-lg md:text-xl text-white/70 mt-8 font-medium"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1, duration: 0.8 }}
-              >
-                Where every pledge becomes a chance to win
-              </motion.p>
-            </motion.div>
-          )}
+              🎯 Campaigns
+            </button>
+            <button
+              onClick={() => router.push('/create')}
+              className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-bold hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg"
+            >
+              ✨ Create
+            </button>
+          </motion.div>
+        </div>
+      </nav>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
+        {/* Hero Section */}
+        <motion.section
+          ref={heroRef}
+          className="text-center py-20"
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={isHeroInView ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-8xl mb-6"
+          >
+            🧠💫
+          </motion.div>
           
-          {/* DONATION Text - Story: The heart of the platform */}
-          {phase === 'donation' && (
-            <motion.div
-              key="donation"
-              initial={{ opacity: 0, scale: 0.3, rotateY: 90, y: 100 }}
-              animate={{ opacity: 1, scale: 1, rotateY: 0, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, x: 100 }}
-              transition={{
-                type: "spring",
-                damping: 20,
-                stiffness: 300,
-                duration: 1.5
-              }}
-              className="relative"
-            >
-              <div className="relative">
-                {/* Main DONATION text */}
-                <motion.h1 
-                  className="text-5xl md:text-7xl lg:text-[8rem] font-black bg-gradient-to-r from-green-400 via-blue-500 to-purple-500 bg-clip-text text-transparent"
-                  style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: 900,
-                    letterSpacing: '-0.05em'
-                  }}
-                  animate={{
-                    textShadow: [
-                      '0 0 20px rgba(34,197,94,0.3)',
-                      '0 0 40px rgba(59,130,246,0.4)',
-                      '0 0 20px rgba(34,197,94,0.3)'
-                    ]
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
-                  <span className="emoji-preserve">💝</span> DONATION
-                </motion.h1>
-                
-                {/* Glow effect */}
-                <motion.div
-                  className="absolute inset-0 text-5xl md:text-7xl lg:text-[8rem] font-black text-green-400 opacity-20 blur-2xl"
-                  animate={{
-                    scale: [1, 1.05, 1],
-                    opacity: [0.2, 0.4, 0.2]
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: 900,
-                    letterSpacing: '-0.05em'
-                  }}
-                >
-                  <span className="emoji-preserve">💝</span> DONATION
-                </motion.div>
-                
-                {/* Heart symbols */}
-                {['💖', '🎁', '✨', '🌟', '💫'].map((symbol, i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute text-3xl emoji-preserve"
-                    style={{
-                      left: `${15 + (i * 17)}%`,
-                      top: `${30 + (i % 2) * 40}%`,
-                    }}
-                    animate={{
-                      y: [0, -20, 0],
-                      opacity: [0.7, 1, 0.7],
-                      scale: [1, 1.3, 1]
-                    }}
-                    transition={{
-                      duration: 2.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: i * 0.3
-                    }}
-                  >
-                    {symbol}
-                  </motion.div>
-                ))}
-              </div>
-              
-              {/* Story context */}
-              <motion.p
-                className="text-lg md:text-xl text-white/70 mt-8 font-medium"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1, duration: 0.8 }}
-              >
-                Supporting dreams while building community rewards
-              </motion.p>
-            </motion.div>
-          )}
+          <motion.h1
+            className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight"
+            initial={{ opacity: 0, y: 30 }}
+            animate={isHeroInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+            transition={{ delay: 0.2, duration: 0.8 }}
+          >
+            Crowdfunding
+            <br />
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              With Prizes
+            </span>
+          </motion.h1>
           
-          {/* ASK Section - Story: The call to action */}
-          {phase === 'ask' && (
-            <motion.div
-              key="ask"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="relative"
+          <motion.p
+            className="text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 30 }}
+            animate={isHeroInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+            transition={{ delay: 0.4, duration: 0.8 }}
+          >
+            Support great projects and win rewards while doing it
+          </motion.p>
+          
+          <motion.div
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+            initial={{ opacity: 0, y: 30 }}
+            animate={isHeroInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+          >
+            <motion.button
+              onClick={() => router.push('/create')}
+              className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-purple-500/25"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <div className="flex items-center justify-center gap-6 flex-wrap">
-                <motion.span
-                  className="text-4xl md:text-6xl lg:text-7xl font-bold text-white"
-                  initial={{ opacity: 0, x: -30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2, duration: 0.6 }}
-                  style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: 900,
-                  }}
-                >
-                  So
-                </motion.span>
-                
-                <motion.button
-                  onClick={handleAskClick}
-                  className="text-4xl md:text-6xl lg:text-7xl font-bold px-8 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white rounded-2xl border-2 border-white/20 backdrop-blur-sm hover:border-white/40 transition-all duration-300 shadow-2xl hover:shadow-purple-500/25 relative overflow-hidden"
-                  initial={{ opacity: 0, x: 30, scale: 0.9 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  whileHover={{ 
-                    scale: 1.05,
-                    boxShadow: "0 0 60px rgba(168, 85, 247, 0.6)"
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ 
-                    delay: 0.4, 
-                    duration: 0.6,
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 20
-                  }}
-                  style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: 900,
-                  }}
-                >
-                  <span className="relative z-10">ASK</span>
-                  {/* Animated background */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 opacity-0"
-                    whileHover={{ opacity: 0.2 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                  {/* Sparkle effect */}
-                  <motion.div
-                    className="absolute inset-0 opacity-0"
-                    whileHover={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {[...Array(5)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute w-2 h-2 bg-white rounded-full"
-                        style={{
-                          left: `${20 + i * 15}%`,
-                          top: `${20 + (i % 2) * 60}%`,
-                        }}
-                        animate={{
-                          opacity: [0, 1, 0],
-                          scale: [0, 1, 0],
-                        }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          delay: i * 0.2
-                        }}
-                      />
-                    ))}
-                  </motion.div>
-                </motion.button>
-              </div>
-              
-              {/* Story conclusion */}
+              🚀 Start a Campaign
+            </motion.button>
+            <motion.button
+              onClick={() => router.push('/campaigns')}
+              className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-xl font-bold text-lg hover:bg-white/20 transition-all border border-white/20"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              🎯 Browse Projects
+            </motion.button>
+          </motion.div>
+        </motion.section>
+
+        {/* The Problem Section */}
+        <motion.section
+          ref={problemRef}
+          className="py-20"
+        >
+          <motion.div
+            className="bg-gradient-to-r from-red-500/20 to-orange-500/20 backdrop-blur-sm rounded-3xl p-12 border border-red-500/30"
+            initial={{ opacity: 0, x: -50 }}
+            animate={isProblemInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -50 }}
+            transition={{ duration: 0.8 }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={isProblemInView ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-center"
+            >
+              <div className="text-8xl mb-6">😭</div>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                The Problem
+              </h2>
+              <p className="text-2xl text-red-300 mb-4 font-semibold">
+                Donating feels unrewarding
+              </p>
+              <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+                You support a cause, feel good for a moment, then nothing. 
+                Your brain craves that reward feedback loop.
+              </p>
+            </motion.div>
+          </motion.div>
+        </motion.section>
+
+        {/* The Solution Section */}
+        <motion.section
+          ref={solutionRef}
+          className="py-20"
+        >
+          <motion.div
+            className="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-sm rounded-3xl p-12 border border-green-500/30"
+            initial={{ opacity: 0, x: 50 }}
+            animate={isSolutionInView ? { opacity: 1, x: 0 } : { opacity: 0, x: 50 }}
+            transition={{ duration: 0.8 }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={isSolutionInView ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-center"
+            >
+              <div className="text-8xl mb-6">🎁✨</div>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                The Solution
+              </h2>
+              <p className="text-2xl text-green-300 mb-4 font-semibold">
+                Win prizes while supporting causes
+              </p>
+              <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+                Every donation gives you a chance to win. 
+                Support amazing projects AND get rewarded for it.
+              </p>
+            </motion.div>
+          </motion.div>
+        </motion.section>
+
+        {/* How It Works */}
+        <motion.section
+          ref={howItWorksRef}
+          className="py-20"
+        >
+          <div className="text-center mb-16">
+            <div className="text-6xl mb-4">
+              🎮
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              How It Works
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
               <motion.div
-                className="mt-8 text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8, duration: 0.6 }}
+                key={index}
+                className={`p-8 rounded-2xl border transition-all duration-300 cursor-pointer relative overflow-hidden ${
+                  activeFeature === index
+                    ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-purple-500/50 shadow-lg shadow-purple-500/25'
+                    : 'bg-black/30 backdrop-blur-sm border-white/10 hover:border-white/20'
+                }`}
+                onClick={() => setActiveFeature(index)}
+                whileHover={{ 
+                  scale: 1.05, 
+                  y: -10,
+                  boxShadow: "0 20px 40px rgba(168, 85, 247, 0.3)"
+                }}
+                whileTap={{ scale: 0.98 }}
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
+                  e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
+                }}
+                style={{
+                  background: activeFeature === index 
+                    ? 'radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.1), rgba(0, 0, 0, 0.3))'
+                    : 'radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.3))'
+                }}
               >
-                <p className="text-lg md:text-xl text-white/70 font-medium mb-4">
-                  Turn your dreams into reality with community power
+                <motion.div 
+                  className="text-6xl mb-4 text-center"
+                  animate={activeFeature === index ? { rotate: [0, 10, -10, 0] } : {}}
+                  transition={{ duration: 0.5 }}
+                >
+                  {feature.icon}
+                </motion.div>
+                <h3 className="text-2xl font-bold text-white mb-4 text-center">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-300 text-center mb-4">
+                  {feature.description}
                 </p>
-                <div className="flex justify-center gap-4 text-2xl">
-                  <motion.span
-                    className="emoji-preserve"
-                    animate={{ rotate: [0, 10, -10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    🎲
-                  </motion.span>
-                  <motion.span
-                    className="emoji-preserve"
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  >
-                    💰
-                  </motion.span>
-                  <motion.span
-                    className="emoji-preserve"
-                    animate={{ rotate: [0, -10, 10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                  >
-                    🎯
-                  </motion.span>
-                </div>
+                <p className="text-purple-300 text-center text-sm">
+                  {feature.detail}
+                </p>
               </motion.div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* Value Proposition */}
+        <motion.section
+          ref={valueRef}
+          className="py-20"
+        >
+          <motion.div
+            className="text-center max-w-4xl mx-auto"
+            initial={{ opacity: 0, y: 50 }}
+            animate={isValueInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+            transition={{ duration: 0.8 }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={isValueInView ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-6xl mb-6"
+            >
+              🤝💎
             </motion.div>
-          )}
-        </AnimatePresence>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Sponsors Power the Prizes
+            </h2>
+            <p className="text-xl text-gray-300 mb-8">
+              Anyone can sponsor prizes to incentivize donations to causes they care about.
+              NFT projects, token communities, brands, or individuals can deposit rewards
+              to boost funding for meaningful projects.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <motion.div
+                className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+                initial={{ opacity: 0, y: 30 }}
+                animate={isValueInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+                transition={{ delay: 0.4, duration: 0.6 }}
+              >
+                <div className="text-4xl mb-3">🎯</div>
+                <h3 className="text-lg font-bold text-white mb-2">Causes Get More Funding</h3>
+                <p className="text-gray-400 text-sm">Prize incentives attract more donors and larger donations</p>
+              </motion.div>
+              
+              <motion.div
+                className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+                initial={{ opacity: 0, y: 30 }}
+                animate={isValueInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+                transition={{ delay: 0.5, duration: 0.6 }}
+              >
+                <div className="text-4xl mb-3">📢</div>
+                <h3 className="text-lg font-bold text-white mb-2">Sponsors Get Exposure</h3>
+                <p className="text-gray-400 text-sm">Connect with passionate communities who care about causes</p>
+              </motion.div>
+              
+              <motion.div
+                className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+                initial={{ opacity: 0, y: 30 }}
+                animate={isValueInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+                transition={{ delay: 0.6, duration: 0.6 }}
+              >
+                <div className="text-4xl mb-3">🎁</div>
+                <h3 className="text-lg font-bold text-white mb-2">Donors Get Rewards</h3>
+                <p className="text-gray-400 text-sm">Win NFTs, tokens, and exclusive items while supporting causes</p>
+              </motion.div>
+            </div>
+            
+          </motion.div>
+        </motion.section>
+
+        {/* CTA Section */}
+        <motion.section
+          ref={ctaRef}
+          className="py-20 text-center"
+        >
+          <motion.div
+            className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-3xl p-12 border border-purple-500/30"
+            initial={{ opacity: 0, y: 50 }}
+            animate={isCtaInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+            transition={{ duration: 0.8 }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={isCtaInView ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-6xl mb-6"
+            >
+              🚀
+            </motion.div>
+            <motion.h2
+              className="text-4xl md:text-5xl font-bold text-white mb-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isCtaInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+            >
+              Ready to Get Started?
+            </motion.h2>
+            <motion.p
+              className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isCtaInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+            >
+              Join the new way of crowdfunding where everyone wins.
+            </motion.p>
+            <motion.div
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isCtaInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              transition={{ delay: 0.8, duration: 0.6 }}
+            >
+              <motion.button
+                onClick={() => router.push('/create')}
+                className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                🚀 Create Campaign
+              </motion.button>
+              <motion.button
+                onClick={() => router.push('/campaigns')}
+                className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-xl font-bold text-lg hover:bg-white/20 transition-all border border-white/20"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                🎯 Support Projects
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        </motion.section>
       </div>
     </div>
   );

@@ -13,6 +13,8 @@ import Leaderboard from '@/components/Leaderboard';
 import EventWatcher from '@/components/EventWatcher';
 import ActivityFeed from '@/components/ActivityFeed';
 import CampaignCard from '@/components/CampaignCard';
+import DailyRaffleWidget from '@/components/DailyRaffleWidget';
+import { Address } from 'viem';
 
 interface SerializedCampaign {
   creator: string;
@@ -24,8 +26,8 @@ interface SerializedCampaign {
   createdAt: string;
   withdrawn: boolean;
   active: boolean;
-  nextRaffleMilestone: string;
-  rafflePrize: string;
+  ended: boolean;
+  prizesClaimed: boolean;
 }
 
 interface CampaignWithId extends SerializedCampaign {
@@ -63,6 +65,8 @@ export default function CampaignsPage() {
     campaignCount: 0
   });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'active' | 'ended'>('all');
   
   const router = useRouter();
   const { isConnected } = useAccount();
@@ -89,22 +93,15 @@ export default function CampaignsPage() {
     chainId: saigon.id,
   });
 
-  const { data: platformRevenue, refetch: refetchPlatformRevenue } = useReadContract({
-    address: CONTRACTS.PLEDGE_TO_CREATE,
-    abi: PLEDGE_TO_CREATE_ABI,
-    functionName: 'platformRevenue',
-    chainId: saigon.id,
-  });
-
   // Update platform stats
   useEffect(() => {
     setPlatformStats({
       totalPledged: totalPledged?.toString() || '0',
       dailyRafflePool: dailyRafflePool?.toString() || '0',
-      platformRevenue: platformRevenue?.toString() || '0',
+      platformRevenue: '0',
       campaignCount: Number(campaignCount || 0)
     });
-  }, [totalPledged, dailyRafflePool, platformRevenue, campaignCount]);
+  }, [totalPledged, dailyRafflePool, campaignCount]);
 
   // Sound effects
   const playSound = useCallback((type: 'pledge' | 'win' | 'raffle') => {
@@ -182,30 +179,39 @@ export default function CampaignsPage() {
     refetchCampaignCount();
     refetchTotalPledged();
     refetchDailyRafflePool();
-    refetchPlatformRevenue();
-  }, [refetchCampaignCount, refetchTotalPledged, refetchDailyRafflePool, refetchPlatformRevenue]);
+  }, [refetchCampaignCount, refetchTotalPledged, refetchDailyRafflePool]);
 
   // Fetch campaigns
   useEffect(() => {
     const fetchCampaigns = async () => {
       if (!campaignCount) return;
       
-      const campaignPromises = [];
+      setLoading(true);
       const count = Number(campaignCount);
+      
+      const campaignPromises = [];
       
       for (let i = 0; i < count; i++) {
         campaignPromises.push(
           fetch(`/api/campaigns/${i}`)
             .then(res => res.json())
-            .catch(() => null)
+            .then(data => ({ ...data, id: i }))
+            .catch(err => {
+              console.error(`Error fetching campaign ${i}:`, err);
+              return null;
+            })
         );
       }
       
-      const results = await Promise.all(campaignPromises);
-      const validCampaigns = results
-        .filter(Boolean)
-        .map((campaign, index) => ({ ...campaign, id: index }));
-      setCampaigns(validCampaigns);
+      try {
+        const results = await Promise.all(campaignPromises);
+        const validCampaigns = results.filter(Boolean) as CampaignWithId[];
+        setCampaigns(validCampaigns);
+      } catch (error) {
+        console.error('Error fetching campaigns:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchCampaigns();
@@ -219,192 +225,215 @@ export default function CampaignsPage() {
     }
   };
 
+  const filteredCampaigns = campaigns.filter(campaign => {
+    switch (filter) {
+      case 'active':
+        return campaign.active && !campaign.ended;
+      case 'ended':
+        return campaign.ended;
+      default:
+        return true;
+    }
+  });
+
+  const activeCampaigns = campaigns.filter(c => c.active && !c.ended).length;
+  const endedCampaigns = campaigns.filter(c => c.ended).length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-purple-900/20 to-black text-white overflow-hidden">
-      {/* Event Watcher */}
-      <EventWatcher
-        onActivity={addActivity}
-        onNotification={addNotification}
-        onParticleEffect={triggerParticles}
-        onSound={playSound}
-        onCampaignUpdate={handleDataRefresh}
-      />
-
-      {/* Particle Effects */}
-      <ParticleEffect trigger={particleEffect.trigger} type={particleEffect.type} />
-
-      {/* Leaderboard Modal */}
-      <Leaderboard isOpen={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
-
-      {/* Notifications */}
-      <div className="fixed top-24 right-6 z-40 space-y-2">
-        <AnimatePresence>
-          {notifications.map((notification) => (
-            <motion.div
-              key={notification.id}
-              initial={{ opacity: 0, x: 300, scale: 0.8 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 300, scale: 0.8 }}
-              transition={{ duration: 0.3 }}
-              className={`max-w-sm p-4 rounded-lg shadow-lg border backdrop-blur-sm ${
-                notification.type === 'success' ? 'bg-green-900/20 border-green-500/20' :
-                notification.type === 'error' ? 'bg-red-900/20 border-red-500/20' :
-                notification.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500/20' :
-                'bg-blue-900/20 border-blue-500/20'
-              }`}
-            >
-              <div className={`font-semibold mb-1 ${
-                notification.type === 'success' ? 'text-green-400' :
-                notification.type === 'error' ? 'text-red-400' :
-                notification.type === 'warning' ? 'text-yellow-400' :
-                'text-blue-400'
-              }`}>
-                {notification.title}
-              </div>
-              <div className="text-white/80 text-sm">
-                {notification.message}
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-40 p-6 bg-black/80 backdrop-blur-sm border-b border-purple-500/20">
-        <div className="flex justify-between items-center max-w-7xl mx-auto">
+      <nav className="relative z-50 p-6">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
           <motion.div
-            className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 cursor-pointer"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-3xl font-bold text-white cursor-pointer flex items-center gap-2"
             onClick={() => router.push('/')}
-            whileHover={{ scale: 1.05 }}
           >
-            WhatsStoppingYou
+            <span className="text-4xl">🚀</span>
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Helpify
+            </span>
           </motion.div>
           
-          <div className="flex items-center gap-4">
-            <motion.button
-              onClick={() => setShowLeaderboard(true)}
-              className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-full font-semibold text-sm hover:from-yellow-700 hover:to-orange-700 transition-all duration-300"
-              whileHover={{ scale: 1.05 }}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-6"
+          >
+            <button
+              onClick={() => router.push('/campaigns')}
+              className="text-purple-300 font-semibold border-b-2 border-purple-300"
             >
-              🏆 Leaderboard
-            </motion.button>
-            
-            <motion.button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`p-2 rounded-full ${soundEnabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-              whileHover={{ scale: 1.05 }}
-            >
-              {soundEnabled ? '🔊' : '🔇'}
-            </motion.button>
-            
-            <motion.button
+              🎯 Campaigns
+            </button>
+            <button
               onClick={() => router.push('/create')}
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300"
-              whileHover={{ scale: 1.05 }}
+              className="text-white/80 hover:text-white transition-colors font-semibold"
             >
-              CREATE
-            </motion.button>
-            
+              ✨ Create
+            </button>
             <TantoConnectButton />
-          </div>
+          </motion.div>
         </div>
       </nav>
 
-      {/* Main Content */}
-      <div className="pt-24">
-        {/* Stats Dashboard */}
-        <div className="max-w-7xl mx-auto px-6 mb-8">
-          <motion.div
-            className="text-center mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 mb-4">
-              <span className="emoji-preserve">🎮</span> CAMPAIGN ARENA
-            </h1>
-            <p className="text-xl text-white/70">
-              Pledge • Win • Celebrate • Repeat
-            </p>
-          </motion.div>
+      <div className="max-w-6xl mx-auto px-4">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-5xl font-bold text-white mb-4">
+            🚀 <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Campaigns
+            </span>
+          </h1>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+            Discover amazing projects, pledge your support, and win incredible prizes!
+          </p>
+        </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <motion.div
-              className="bg-gradient-to-br from-purple-900/40 to-pink-900/40 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/30"
-              whileHover={{ scale: 1.02, y: -5 }}
-            >
-              <div className="text-purple-300 text-sm mb-2">💰 Total Pledged</div>
-              <div className="text-3xl font-bold text-white">
-                {safeFormatEther(platformStats.totalPledged)} RON
-              </div>
-              <div className="text-purple-400 text-xs mt-1">
-                Across {platformStats.campaignCount} campaigns
-              </div>
-            </motion.div>
+        {/* Daily Raffle Widget */}
+        <DailyRaffleWidget onDrawSuccess={handleDataRefresh} />
 
-            <motion.div
-              className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/30"
-              whileHover={{ scale: 1.02, y: -5 }}
-            >
-              <div className="text-blue-300 text-sm mb-2">🎰 Daily Raffle</div>
-              <div className="text-3xl font-bold text-white">
-                {safeFormatEther(platformStats.dailyRafflePool)} RON
-              </div>
-              <div className="text-blue-400 text-xs mt-1">
-                Winner selected daily
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 backdrop-blur-sm rounded-2xl p-6 border border-green-500/30"
-              whileHover={{ scale: 1.02, y: -5 }}
-            >
-              <div className="text-green-300 text-sm mb-2">📊 Platform Revenue</div>
-              <div className="text-3xl font-bold text-white">
-                {safeFormatEther(platformStats.platformRevenue)} RON
-              </div>
-              <div className="text-green-400 text-xs mt-1">
-                5% fee reinvested
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="bg-gradient-to-br from-orange-900/40 to-red-900/40 backdrop-blur-sm rounded-2xl p-6 border border-orange-500/30"
-              whileHover={{ scale: 1.02, y: -5 }}
-            >
-              <div className="text-orange-300 text-sm mb-2">🚀 Active Campaigns</div>
-              <div className="text-3xl font-bold text-white">
-                {campaigns.filter(c => c.active).length}
-              </div>
-              <div className="text-orange-400 text-xs mt-1">
-                Ready for action
-              </div>
-            </motion.div>
+        {/* Filter Tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="flex justify-center mb-8"
+        >
+          <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-2 border border-white/10">
+            <div className="flex gap-2">
+              {(['all', 'active', 'ended'] as const).map((filterType) => (
+                <button
+                  key={filterType}
+                  onClick={() => setFilter(filterType)}
+                  className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                    filter === filterType
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {filterType === 'all' && `All (${campaigns.length})`}
+                  {filterType === 'active' && `Active (${activeCampaigns})`}
+                  {filterType === 'ended' && `Ended (${endedCampaigns})`}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Activity Feed */}
-        <div className="max-w-7xl mx-auto px-6 mb-8">
-          <ActivityFeed activities={activityFeed} />
-        </div>
+        {/* Campaign Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+        >
+          <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 border border-green-500/20">
+            <div className="text-3xl font-bold text-green-400 mb-2">{campaigns.length}</div>
+            <div className="text-gray-300">Total Campaigns</div>
+          </div>
+          <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20">
+            <div className="text-3xl font-bold text-blue-400 mb-2">{activeCampaigns}</div>
+            <div className="text-gray-300">Active Campaigns</div>
+          </div>
+          <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
+            <div className="text-3xl font-bold text-purple-400 mb-2">{endedCampaigns}</div>
+            <div className="text-gray-300">Completed Campaigns</div>
+          </div>
+        </motion.div>
 
         {/* Campaigns Grid */}
-        <div className="max-w-7xl mx-auto px-6 pb-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {campaigns.map((campaign, index) => (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
               <motion.div
-                key={campaign.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                key={i}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
               >
-                <CampaignCard 
-                  campaign={campaign} 
-                  onPledgeSuccess={handleDataRefresh}
-                />
+                <div className="animate-pulse">
+                  <div className="h-6 bg-gray-700 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-700 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-700 rounded mb-4"></div>
+                  <div className="h-3 bg-gray-700 rounded mb-2"></div>
+                  <div className="h-8 bg-gray-700 rounded"></div>
+                </div>
               </motion.div>
             ))}
           </div>
-        </div>
+        ) : filteredCampaigns.length > 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {filteredCampaigns.map((campaign, index) => (
+              <motion.div
+                key={campaign.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <CampaignCard
+                  campaign={campaign}
+                  onPledgeSuccess={handleDataRefresh}
+                  onSponsorSuccess={handleDataRefresh}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-center py-16"
+          >
+            <div className="text-6xl mb-4">🎯</div>
+            <h3 className="text-2xl font-bold text-white mb-2">
+              {filter === 'active' ? 'No Active Campaigns' : 
+               filter === 'ended' ? 'No Ended Campaigns' : 'No Campaigns Yet'}
+            </h3>
+            <p className="text-gray-400 mb-8">
+              {filter === 'active' ? 'All campaigns have ended or are inactive.' :
+               filter === 'ended' ? 'No campaigns have been completed yet.' :
+               'Be the first to create a campaign and start something amazing!'}
+            </p>
+            <motion.button
+              onClick={() => window.location.href = '/create'}
+              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              🚀 Create Campaign
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* Refresh Button */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-center mt-12"
+        >
+          <motion.button
+            onClick={handleDataRefresh}
+            className="px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl text-white font-medium transition-all border border-white/20"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            🔄 Refresh Campaigns
+          </motion.button>
+        </motion.div>
       </div>
     </div>
   );

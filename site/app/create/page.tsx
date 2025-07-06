@@ -35,10 +35,10 @@ export default function CreatePage() {
     hash,
   });
 
-  // Generate floating emojis for casino effect
+  // Generate floating emojis
   useEffect(() => {
     const interval = setInterval(() => {
-      const emojis = ['🎰', '💰', '🎲', '💎', '🎯', '🃏', '💫', '✨', '🎊', '🎉'];
+      const emojis = ['🎁', '💎', '🎯', '🚀', '✨', '🎊', '🎉', '💫'];
       const newEmoji = {
         id: Date.now() + Math.random(),
         emoji: emojis[Math.floor(Math.random() * emojis.length)],
@@ -56,7 +56,7 @@ export default function CreatePage() {
     if (isConfirmed) {
       setShowSuccessAnimation(true);
       setTimeout(() => {
-        router.push('/');
+        router.push('/campaigns');
       }, 3000);
     }
   }, [isConfirmed, router]);
@@ -85,11 +85,15 @@ export default function CreatePage() {
       setUploadError('');
       setUploadedBlobId('');
       setFormData(prev => ({ ...prev, imageUrl: '' }));
+      
+      // Auto-upload to Walrus
+      uploadToWalrus(file);
     }
   };
 
-  const uploadToWalrus = async () => {
-    if (!selectedFile) return;
+  const uploadToWalrus = async (file?: File) => {
+    const fileToUpload = file || selectedFile;
+    if (!fileToUpload) return;
     
     setIsUploadingImage(true);
     setUploadError('');
@@ -97,9 +101,9 @@ export default function CreatePage() {
     try {
       const response = await fetch(`${WALRUS_PUBLISHER}/v1/blobs`, {
         method: 'PUT',
-        body: selectedFile,
+        body: fileToUpload,
         headers: {
-          'Content-Type': selectedFile.type,
+          'Content-Type': fileToUpload.type,
         },
       });
       
@@ -181,7 +185,7 @@ export default function CreatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white relative overflow-hidden">
       {/* Floating Background Elements */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Animated background gradients */}
@@ -189,11 +193,11 @@ export default function CreatePage() {
           className="absolute inset-0 opacity-10"
           animate={{
             background: [
-              "radial-gradient(circle at 25% 25%, rgba(255, 215, 0, 0.2) 0%, transparent 50%)",
-              "radial-gradient(circle at 75% 75%, rgba(255, 20, 147, 0.2) 0%, transparent 50%)",
-              "radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.2) 0%, transparent 50%)",
-              "radial-gradient(circle at 25% 75%, rgba(0, 255, 127, 0.2) 0%, transparent 50%)",
-              "radial-gradient(circle at 25% 25%, rgba(255, 215, 0, 0.2) 0%, transparent 50%)"
+              "radial-gradient(circle at 25% 25%, rgba(168, 85, 247, 0.2) 0%, transparent 50%)",
+              "radial-gradient(circle at 75% 75%, rgba(236, 72, 153, 0.2) 0%, transparent 50%)",
+              "radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.2) 0%, transparent 50%)",
+              "radial-gradient(circle at 25% 75%, rgba(168, 85, 247, 0.2) 0%, transparent 50%)",
+              "radial-gradient(circle at 25% 25%, rgba(168, 85, 247, 0.2) 0%, transparent 50%)"
             ]
           }}
           transition={{
@@ -208,7 +212,7 @@ export default function CreatePage() {
           {floatingEmojis.map((item) => (
             <motion.div
               key={item.id}
-              className="absolute text-3xl opacity-20 emoji-preserve"
+              className="absolute text-3xl opacity-20"
               style={{
                 left: `${item.x}%`,
                 top: `${item.y}%`,
@@ -250,10 +254,10 @@ export default function CreatePage() {
                   ease: "easeInOut"
                 }}
               >
-                <span className="emoji-preserve">🎉</span>
+                🎉
               </motion.div>
               <motion.h1
-                className="text-6xl font-bold bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent mb-4"
+                className="text-6xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-4"
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
@@ -266,7 +270,7 @@ export default function CreatePage() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 1 }}
               >
-                Your dream is now ready for supporters!
+                Your project is now ready for supporters and sponsors!
               </motion.p>
               <motion.div
                 className="flex justify-center gap-4 mt-6 text-4xl"
@@ -274,10 +278,9 @@ export default function CreatePage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.5 }}
               >
-                {['🎰', '💰', '🎲', '💎', '🎯'].map((emoji, i) => (
+                {['🎁', '💎', '🎯', '🚀', '✨'].map((emoji, i) => (
                   <motion.span
                     key={i}
-                    className="emoji-preserve"
                     animate={{
                       y: [0, -20, 0],
                       rotate: [0, 360],
@@ -301,43 +304,23 @@ export default function CreatePage() {
       <nav className="fixed top-0 left-0 right-0 z-40 p-6 bg-black/50 backdrop-blur-sm">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           <motion.div
-            className="text-2xl font-bold text-white cursor-pointer relative"
+            className="text-3xl font-bold text-white cursor-pointer flex items-center gap-2"
             onClick={() => router.push('/')}
             whileHover={{ scale: 1.05 }}
-            style={{
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              fontWeight: 900,
-            }}
           >
-            <span className="relative z-10">WhatsStoppingYou</span>
-            <motion.div
-              className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg opacity-20 blur"
-              animate={{
-                opacity: [0.2, 0.4, 0.2],
-                scale: [1, 1.05, 1],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            />
+            <span className="text-4xl">🚀</span>
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Helpify
+            </span>
           </motion.div>
           
           <div className="flex items-center gap-8">
             <motion.button
-              onClick={() => router.push('/why')}
+              onClick={() => router.push('/campaigns')}
               className="text-lg font-semibold text-white/80 hover:text-white transition-colors duration-300"
               whileHover={{ scale: 1.05 }}
             >
-              WHY
-            </motion.button>
-            <motion.button
-              onClick={() => router.push('/help')}
-              className="text-lg font-semibold text-white/80 hover:text-white transition-colors duration-300"
-              whileHover={{ scale: 1.05 }}
-            >
-              HELP
+              🎯 Campaigns
             </motion.button>
             <TantoConnectButton />
           </div>
@@ -354,16 +337,12 @@ export default function CreatePage() {
             transition={{ duration: 0.8 }}
           >
             <motion.h1
-              className="text-6xl md:text-8xl font-black mb-4 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent"
-              style={{
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: 900,
-              }}
+              className="text-6xl md:text-8xl font-black mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"
               animate={{
                 textShadow: [
-                  '0 0 20px rgba(255,215,0,0.3)',
-                  '0 0 40px rgba(255,20,147,0.4)',
-                  '0 0 20px rgba(255,215,0,0.3)'
+                  '0 0 20px rgba(168, 85, 247, 0.3)',
+                  '0 0 40px rgba(236, 72, 153, 0.4)',
+                  '0 0 20px rgba(168, 85, 247, 0.3)'
                 ]
               }}
               transition={{
@@ -372,7 +351,7 @@ export default function CreatePage() {
                 ease: "easeInOut"
               }}
             >
-              CREATE YOUR DREAM
+              CREATE YOUR PROJECT
             </motion.h1>
             <motion.p
               className="text-xl text-white/70 mb-8"
@@ -380,7 +359,7 @@ export default function CreatePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.6 }}
             >
-              Launch your campaign and let the community make it happen
+              Launch your campaign and let sponsors add prizes to boost your funding
             </motion.p>
             <motion.div
               className="flex justify-center gap-4 text-3xl"
@@ -388,10 +367,9 @@ export default function CreatePage() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.5, duration: 0.6 }}
             >
-              {['🎰', '💰', '🎲'].map((emoji, i) => (
+              {['🎁', '💎', '🎯'].map((emoji, i) => (
                 <motion.span
                   key={i}
-                  className="emoji-preserve"
                   animate={{
                     y: [0, -10, 0],
                     rotate: [0, 10, -10, 0],
@@ -416,10 +394,9 @@ export default function CreatePage() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <div className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-500/20 rounded-2xl p-6 backdrop-blur-sm">
+              <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-2xl p-6 backdrop-blur-sm">
                 <div className="text-green-400 text-2xl font-bold mb-2 flex items-center justify-center gap-3">
                   <motion.span
-                    className="emoji-preserve"
                     animate={{ rotate: [0, 360] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
@@ -427,7 +404,6 @@ export default function CreatePage() {
                   </motion.span>
                   Campaign Created Successfully!
                   <motion.span
-                    className="emoji-preserve"
                     animate={{ rotate: [0, 360] }}
                     transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
                   >
@@ -435,7 +411,7 @@ export default function CreatePage() {
                   </motion.span>
                 </div>
                 <div className="text-white/70 text-sm">
-                  Get ready for the magic to begin...
+                  Redirecting to campaigns page...
                 </div>
               </div>
             </motion.div>
@@ -449,7 +425,7 @@ export default function CreatePage() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <div className="bg-red-900/20 border border-red-500/20 rounded-2xl p-6 backdrop-blur-sm">
+              <div className="bg-red-500/20 border border-red-500/30 rounded-2xl p-6 backdrop-blur-sm">
                 <div className="text-red-400 text-xl font-semibold mb-2">
                   ❌ Transaction Failed
                 </div>
@@ -469,13 +445,12 @@ export default function CreatePage() {
           >
             {isConnected ? (
               <motion.div
-                className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-500/20 rounded-2xl p-6 backdrop-blur-sm"
+                className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-2xl p-6 backdrop-blur-sm"
                 whileHover={{ scale: 1.02 }}
                 transition={{ duration: 0.3 }}
               >
                 <div className="text-green-400 text-xl font-semibold mb-2 flex items-center justify-center gap-2">
                   <motion.span
-                    className="emoji-preserve"
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
@@ -492,13 +467,12 @@ export default function CreatePage() {
               </motion.div>
             ) : (
               <motion.div
-                className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/20 rounded-2xl p-6 backdrop-blur-sm"
+                className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-2xl p-6 backdrop-blur-sm"
                 whileHover={{ scale: 1.02 }}
                 transition={{ duration: 0.3 }}
               >
                 <div className="text-yellow-400 text-xl font-semibold mb-2 flex items-center justify-center gap-2">
                   <motion.span
-                    className="emoji-preserve"
                     animate={{ rotate: [0, 10, -10, 0] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
@@ -529,7 +503,7 @@ export default function CreatePage() {
                 transition={{ delay: 0.5, duration: 0.6 }}
               >
                 <label className="block text-xl font-semibold mb-4 text-white flex items-center gap-2">
-                  <span className="emoji-preserve">🎯</span>
+                  <span>🎯</span>
                   Campaign Title
                 </label>
                 <motion.input
@@ -537,7 +511,7 @@ export default function CreatePage() {
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
-                  placeholder="What's your dream project?"
+                  placeholder="What's your project about?"
                   className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
                   required
                   disabled={isPending || isConfirming}
@@ -552,14 +526,14 @@ export default function CreatePage() {
                 transition={{ delay: 0.6, duration: 0.6 }}
               >
                 <label className="block text-xl font-semibold mb-4 text-white flex items-center gap-2">
-                  <span className="emoji-preserve">📝</span>
+                  <span>📝</span>
                   Description
                 </label>
                 <motion.textarea
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  placeholder="Tell your story. What are you building? Why does it matter? Make it compelling!"
+                  placeholder="Tell your story. What are you building? Why does it matter?"
                   rows={6}
                   className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300 resize-none"
                   required
@@ -575,7 +549,7 @@ export default function CreatePage() {
                 transition={{ delay: 0.7, duration: 0.6 }}
               >
                 <label className="block text-xl font-semibold mb-4 text-white flex items-center gap-2">
-                  <span className="emoji-preserve">💰</span>
+                  <span>💰</span>
                   Funding Goal (RON)
                 </label>
                 <motion.input
@@ -591,12 +565,12 @@ export default function CreatePage() {
                   disabled={isPending || isConfirming}
                   whileFocus={{ scale: 1.02 }}
                 />
-                <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-500/20 rounded-xl">
+                <div className="mt-4 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 rounded-xl">
                   <div className="text-white/70 text-sm mb-2">
-                    🎰 <strong>Casino Mechanics:</strong> Platform fee: 5% will be deducted for revenue sharing and raffles
+                    💎 <strong>Prize System:</strong> 5% platform fee funds daily raffles for recent donors
                   </div>
                   <div className="text-white/60 text-xs">
-                    💡 <strong>Raffle System:</strong> Every 10% of goal progress triggers a raffle with 40% of fees going to campaign prizes
+                    🎁 <strong>Sponsor Prizes:</strong> Anyone can deposit NFTs, tokens, or other rewards to boost your campaign
                   </div>
                 </div>
               </motion.div>
@@ -608,7 +582,7 @@ export default function CreatePage() {
                 transition={{ delay: 0.8, duration: 0.6 }}
               >
                 <label className="block text-xl font-semibold mb-4 text-white flex items-center gap-2">
-                  <span className="emoji-preserve">🖼️</span>
+                  <span>🖼️</span>
                   Campaign Image
                 </label>
                 
@@ -623,44 +597,38 @@ export default function CreatePage() {
                     whileFocus={{ scale: 1.02 }}
                   />
                   
-                  {/* Upload Button */}
-                  {selectedFile && !uploadedBlobId && (
-                    <motion.button
-                      type="button"
-                      onClick={uploadToWalrus}
-                      disabled={isUploadingImage || isPending || isConfirming}
-                      className="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-semibold text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transition-all duration-300"
-                      whileHover={{ scale: isUploadingImage ? 1 : 1.02 }}
-                      whileTap={{ scale: isUploadingImage ? 1 : 0.98 }}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
+                  {/* Upload Status */}
+                  {isUploadingImage && (
+                    <motion.div
+                      className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-2xl p-4"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5 }}
                     >
-                      {isUploadingImage ? (
-                        <div className="flex items-center justify-center gap-3">
-                          <motion.div
-                            className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          />
-                          Uploading to Walrus...
-                        </div>
-                      ) : (
-                        '🚀 Upload Image to Walrus'
-                      )}
-                    </motion.button>
+                      <div className="text-blue-400 font-semibold mb-2 flex items-center gap-2">
+                        <motion.div
+                          className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        />
+                        Uploading to Walrus...
+                      </div>
+                      <div className="text-white/70 text-sm">
+                        Please wait while we store your image on decentralized storage
+                      </div>
+                    </motion.div>
                   )}
                   
                   {/* Upload Success */}
                   {uploadedBlobId && (
                     <motion.div
-                      className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-500/20 rounded-2xl p-4"
+                      className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-2xl p-4"
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.5 }}
                     >
                       <div className="text-green-400 font-semibold mb-2 flex items-center gap-2">
                         <motion.span
-                          className="emoji-preserve"
                           animate={{ rotate: [0, 360] }}
                           transition={{ duration: 2, repeat: Infinity }}
                         >
@@ -680,7 +648,7 @@ export default function CreatePage() {
                   {/* Upload Error */}
                   {uploadError && (
                     <motion.div
-                      className="bg-red-900/20 border border-red-500/20 rounded-2xl p-4"
+                      className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4"
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.5 }}
@@ -743,9 +711,6 @@ export default function CreatePage() {
                         <div className="text-white/50 text-xs">
                           Blob ID: {uploadedBlobId}
                         </div>
-                        <div className="text-white/40 text-xs">
-                          💡 Tip: If image doesn't load immediately, try refreshing the page or opening the URL directly
-                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -760,7 +725,7 @@ export default function CreatePage() {
               <motion.button
                 type="submit"
                 disabled={!isConnected || isPending || isConfirming || isConfirmed}
-                className="w-full py-6 px-8 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 rounded-2xl font-bold text-xl text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transition-all duration-300 relative overflow-hidden"
+                className="w-full py-6 px-8 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-2xl font-bold text-xl text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transition-all duration-300 relative overflow-hidden"
                 whileHover={{ scale: !isConnected || isPending || isConfirming ? 1 : 1.02 }}
                 whileTap={{ scale: !isConnected || isPending || isConfirming ? 1 : 0.98 }}
                 initial={{ opacity: 0, y: 20 }}
@@ -789,7 +754,6 @@ export default function CreatePage() {
                   ) : isConfirmed ? (
                     <div className="flex items-center justify-center gap-3">
                       <motion.span
-                        className="emoji-preserve"
                         animate={{ rotate: [0, 360] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       >
@@ -801,16 +765,16 @@ export default function CreatePage() {
                     'Connect Wallet to Create Campaign'
                   ) : (
                     <div className="flex items-center justify-center gap-3">
-                      <span className="emoji-preserve">🚀</span>
-                      Launch Your Dream
-                      <span className="emoji-preserve">🎯</span>
+                      <span>🚀</span>
+                      Create Campaign
+                      <span>🎯</span>
                     </div>
                   )}
                 </span>
                 
                 {/* Animated background */}
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 opacity-0"
+                  className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 opacity-0"
                   whileHover={{ opacity: 0.2 }}
                   transition={{ duration: 0.3 }}
                 />
@@ -838,32 +802,32 @@ export default function CreatePage() {
             </form>
           </motion.div>
 
-          {/* Enhanced Info Section */}
+          {/* How It Works Section */}
           <motion.div
             className="mt-12 bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm rounded-3xl border border-white/10 p-8 shadow-2xl"
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.8 }}
           >
-            <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent">
-              <span className="emoji-preserve">🎰</span> How The Casino Magic Works
+            <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="emoji-natural">🎁</span> How Prize Crowdfunding Works
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
                   icon: '🚀',
-                  title: 'Launch & Go Live',
-                  desc: 'Create your campaign instantly. No deadlines, no waiting periods. Your dream goes live immediately!'
+                  title: 'Create Campaign',
+                  desc: 'Launch your project with a funding goal. No deadlines - campaigns stay active until you end them.'
                 },
                 {
-                  icon: '💎',
-                  title: 'Earn Soulbound NFTs',
-                  desc: 'Supporters get permanent proof of their belief in your project. These NFTs can never be transferred or sold.'
+                  icon: '🎁',
+                  title: 'Sponsors Add Prizes',
+                  desc: 'Anyone can deposit NFTs, tokens, or other rewards to incentivize donations to your campaign.'
                 },
                 {
                   icon: '🎰',
-                  title: 'Automatic Raffles',
-                  desc: 'Every 10% of goal progress triggers exciting raffles. Winners get real RON prizes automatically!'
+                  title: 'Prize Distribution',
+                  desc: 'When you end the campaign, all prizes are distributed to donors via weighted random selection.'
                 }
               ].map((item, index) => (
                 <motion.div
@@ -886,7 +850,7 @@ export default function CreatePage() {
                       delay: index * 0.5
                     }}
                   >
-                    <span className="emoji-preserve">{item.icon}</span>
+                    <span>{item.icon}</span>
                   </motion.div>
                   <h3 className="text-xl font-semibold mb-2 text-white">{item.title}</h3>
                   <p className="text-white/70">{item.desc}</p>
@@ -894,53 +858,51 @@ export default function CreatePage() {
               ))}
             </div>
             
-            {/* Enhanced Raffle System Details */}
+            {/* Prize System Details */}
             <motion.div
-              className="mt-8 p-6 bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/20 rounded-2xl"
+              className="mt-8 p-6 bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 rounded-2xl"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 1, duration: 0.6 }}
             >
               <h3 className="text-xl font-semibold text-purple-400 mb-4 text-center flex items-center justify-center gap-2">
                 <motion.span
-                  className="emoji-preserve"
                   animate={{ rotate: [0, 360] }}
                   transition={{ duration: 3, repeat: Infinity }}
                 >
-                  🎰
+                  🎁
                 </motion.span>
-                Casino Raffle System
+                Prize & Reward System
                 <motion.span
-                  className="emoji-preserve"
                   animate={{ rotate: [0, 360] }}
                   transition={{ duration: 3, repeat: Infinity, delay: 1.5 }}
                 >
-                  🎲
+                  💎
                 </motion.span>
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="bg-white/5 p-4 rounded-xl">
                   <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-                    <span className="emoji-preserve">🎯</span>
-                    Campaign Raffles
+                    <span>🎯</span>
+                    Campaign Prizes
                   </h4>
                   <ul className="text-white/70 space-y-1">
-                    <li>• 🎰 Trigger every 10% of goal progress</li>
-                    <li>• 💰 40% of platform fees go to prizes</li>
-                    <li>• ⚖️ Winners selected by pledge amount weight</li>
-                    <li>• 🚀 Automatic prize distribution via VRF</li>
+                    <li>• 🎁 Sponsors can deposit ERC20, ERC721, ERC1155 tokens</li>
+                    <li>• ⚖️ Winners selected by donation amount (weighted)</li>
+                    <li>• 🎰 All prizes distributed when campaign ends</li>
+                    <li>• 🔒 VRF ensures fair random selection</li>
                   </ul>
                 </div>
                 <div className="bg-white/5 p-4 rounded-xl">
                   <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-                    <span className="emoji-preserve">🌟</span>
-                    Daily Raffles
+                    <span>🌟</span>
+                    Daily Rewards
                   </h4>
                   <ul className="text-white/70 space-y-1">
-                    <li>• 🎲 Run daily with 30% of platform fees</li>
-                    <li>• 🌍 Open to all platform users</li>
-                    <li>• 📊 Weighted by total pledged amount</li>
-                    <li>• 🎁 Additional rewards for community</li>
+                    <li>• 💰 5% platform fee funds daily prize pool</li>
+                    <li>• 🎲 Daily draws for recent donors (24 hours)</li>
+                    <li>• 📊 Weighted by total user donation history</li>
+                    <li>• 🎁 Additional incentive for community participation</li>
                   </ul>
                 </div>
               </div>

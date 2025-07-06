@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     console.log('API: Campaign data:', raw);
 
-    // Defensive check for struct layout
+    // Updated struct layout to match current contract
     const [
       creator,
       title,
@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
       createdAt,
       withdrawn,
       active,
-      nextRaffleMilestone,
-      rafflePrize,
+      ended,
+      prizesClaimed,
     ] = raw as unknown as [
       `0x${string}`,
       string,
@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
       bigint,
       boolean,
       boolean,
-      bigint,
-      bigint
+      boolean,
+      boolean
     ];
 
     if (!title || createdAt === BigInt(0)) {
@@ -69,8 +69,8 @@ export async function GET(request: NextRequest) {
       createdAt: createdAt.toString(),
       withdrawn,
       active,
-      nextRaffleMilestone: nextRaffleMilestone.toString(),
-      rafflePrize: rafflePrize.toString(),
+      ended,
+      prizesClaimed,
     };
 
     return NextResponse.json(serialized);
