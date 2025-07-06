@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseUnits, Address, createPublicClient, http } from 'viem';
-import { saigon } from 'viem/chains';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { formatEther, parseEther, parseUnits, Address } from 'viem';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
 import { useSounds } from '@/hooks/useSounds';
@@ -24,11 +23,6 @@ interface NFTMetadata {
   name?: string;
   description?: string;
 }
-
-const publicClient = createPublicClient({
-  chain: saigon,
-  transport: http('https://saigon-testnet.roninchain.com/rpc'),
-});
 
 const ERC20_ABI = [
   {
@@ -281,14 +275,35 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
     }
   }, [address, tokenContract, prizeType, nftBalance, tokenName]);
 
-  // Load user's NFTs when contract is validated and it's ERC721
+  // Get NFT contract address from the main contract
+  const { data: nftContractAddress } = useReadContract({
+    address: CONTRACTS.PLEDGE_TO_CREATE,
+    abi: PLEDGE_TO_CREATE_ABI,
+    functionName: 'getNFTContract',
+  });
+
+  // Generate badges based on user's pledge history
+  const generateBadges = useCallback(() => {
+    // Implementation for generating badges
+    const badges: string[] = [];
+    
+    // Add logic to generate badges based on pledge history
+    // This is a placeholder implementation
+    
+    return badges;
+  }, []);
+
+  // Load user's NFTs when contract address is available
   useEffect(() => {
-    if (contractValid && prizeType === 'ERC721' && address && nftBalance > 0) {
+    if (prizeType === 'ERC721' && tokenContract && tokenContract.length > 0) {
       loadUserNFTs();
-    } else {
-      setUserNFTs([]);
     }
-  }, [contractValid, prizeType, address, nftBalance, loadUserNFTs]);
+  }, [prizeType, tokenContract, loadUserNFTs]);
+
+  // Generate badges on mount
+  useEffect(() => {
+    generateBadges();
+  }, [generateBadges]);
 
   // Preload sounds on component mount
   useEffect(() => {
@@ -610,7 +625,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                             {nft.image ? (
                               <Image
                                 src={nft.image}
-                                alt={nft.name}
+                                alt={nft.name || `NFT #${nft.tokenId}`}
                                 width={64}
                                 height={64}
                                 className="w-full h-full object-cover"
@@ -654,13 +669,7 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder={
-                    prizeType === 'ERC20' 
-                      ? `e.g., ${amount} ${tokenSymbol} tokens` 
-                      : selectedTokenId 
-                        ? `e.g., Selected NFT #${selectedTokenId}`
-                        : 'e.g., Rare NFT collectible'
-                  }
+                  placeholder={`Enter amount of ${selectedTokenId || 'token'} to deposit`}
                   className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
               </div>
@@ -815,6 +824,10 @@ export default function PrizeSponsorModal({ campaignId, onClose, onSuccess }: Pr
               </button>
             </div>
           )}
+
+          <div className="text-white/50 text-xs">
+            You&apos;re sponsoring Campaign #{campaignId}
+          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>

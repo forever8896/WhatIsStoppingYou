@@ -9,6 +9,7 @@ import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 import { TantoConnectButton } from '@sky-mavis/tanto-widget';
 import PrizeSponsorModal from './PrizeSponsorModal';
 import { useSounds } from '@/hooks/useSounds';
+import Image from 'next/image';
 
 interface SerializedCampaign {
   creator: string;
@@ -65,12 +66,11 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
   });
 
   // Get campaign prizes
-  const { data: campaignPrizes, refetch: refetchPrizes } = useReadContract({
+  const { data: campaignPrizes } = useReadContract({
     address: CONTRACTS.PLEDGE_TO_CREATE,
     abi: PLEDGE_TO_CREATE_ABI,
     functionName: 'getCampaignPrizes',
     args: [BigInt(campaign.id)],
-    chainId: saigon.id,
   });
 
   // Update prizes when data changes
@@ -79,7 +79,7 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
       // Convert the contract response to our Prize interface
       const convertedPrizes: Prize[] = (campaignPrizes as unknown[]).map((prize: unknown) => {
         const prizeData = prize as {
-          prizeType: number;
+          prizeType: bigint;
           tokenContract: string;
           tokenId: bigint;
           amount: bigint;
@@ -87,7 +87,7 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
           description: string;
         };
         return {
-          prizeType: prizeData.prizeType,
+          prizeType: Number(prizeData.prizeType),
           tokenContract: prizeData.tokenContract,
           tokenId: prizeData.tokenId.toString(),
           amount: prizeData.amount.toString(),
@@ -229,13 +229,14 @@ export default function CampaignCard({ campaign, onPledgeSuccess, onSponsorSucce
         {/* Image */}
         <div className="relative h-full">
           {!imageError && campaign.imageUrl && (
-            <img
+            <Image
               src={campaign.imageUrl}
               alt={campaign.title}
-              className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+              width={400}
+              height={200}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               onLoad={handleImageLoad}
               onError={handleImageError}
-              style={{ display: imageLoading ? 'none' : 'block' }}
             />
           )}
           

@@ -39,7 +39,7 @@ export default function WhyPage() {
       content: [
         "🚫 Projects fail to reach goals and lose ALL funding",
         "😴 Boring donation experience with no excitement",
-        "💔 Backers get nothing when projects don't succeed",
+        "💔 Backers get nothing when projects don&apos;t succeed",
         "📉 No ongoing engagement after initial pledge",
         "🎭 Fake promises with no real accountability"
       ],

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useAccount, useWatchContractEvent } from 'wagmi';
-import { formatEther, Log } from 'viem';
+import { formatEther } from 'viem';
 import { CONTRACTS, PLEDGE_TO_CREATE_ABI } from '@/lib/contracts';
 
 interface ActivityFeed {
@@ -28,50 +28,6 @@ interface EventWatcherProps {
   onParticleEffect: (type: 'win' | 'pledge' | 'raffle') => void;
   onSound: (type: 'pledge' | 'win' | 'raffle') => void;
   onCampaignUpdate: () => void;
-}
-
-// Type definitions for contract event logs
-interface PledgeMadeLog extends Log {
-  args: {
-    campaignId: bigint;
-    pledger: string;
-    amount: bigint;
-    timestamp: bigint;
-    nftTokenId: bigint;
-  };
-}
-
-interface CampaignRaffleWinnerLog extends Log {
-  args: {
-    campaignId: bigint;
-    winner: string;
-    prizeIndex: bigint;
-  };
-}
-
-interface DailyRaffleWinnerLog extends Log {
-  args: {
-    day: bigint;
-    winner: string;
-    prize: bigint;
-  };
-}
-
-interface CampaignRaffleRequestedLog extends Log {
-  args: {
-    campaignId: bigint;
-    requestHash: string;
-  };
-}
-
-interface CampaignCreatedLog extends Log {
-  args: {
-    campaignId: bigint;
-    creator: string;
-    title: string;
-    goal: bigint;
-    createdAt: bigint;
-  };
 }
 
 export default function EventWatcher({ 

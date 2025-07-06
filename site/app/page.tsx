@@ -24,7 +24,6 @@ export default function Home() {
   const isHeroInView = useInView(heroRef, { once: true, margin: "-50px" });
   const isProblemInView = useInView(problemRef, { once: true, margin: "-50px" });
   const isSolutionInView = useInView(solutionRef, { once: true, margin: "-50px" });
-  const isHowItWorksInView = useInView(howItWorksRef, { once: true, margin: "-50px" });
   const isValueInView = useInView(valueRef, { once: true, margin: "-50px" });
   const isCtaInView = useInView(ctaRef, { once: true, margin: "-50px" });
 
