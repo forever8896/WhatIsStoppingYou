@@ -320,7 +320,7 @@ export default function CampaignsPage() {
             animate={{ opacity: 1, y: 0 }}
           >
             <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 mb-4">
-              🎮 CAMPAIGN ARENA
+              <span className="emoji-preserve">🎮</span> CAMPAIGN ARENA
             </h1>
             <p className="text-xl text-white/70">
               Pledge • Win • Celebrate • Repeat

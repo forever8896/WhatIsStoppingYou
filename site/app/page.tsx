@@ -5,12 +5,31 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  const [phase, setPhase] = useState<'initial' | 'typing' | 'complete' | 'fadeOut' | 'money' | 'ask'>('initial');
+  const [phase, setPhase] = useState<'initial' | 'typing' | 'complete' | 'fadeOut' | 'casino' | 'donation' | 'ask'>('initial');
   const [displayText, setDisplayText] = useState('');
   const [showNavbar, setShowNavbar] = useState(false);
+  const [floatingNumbers, setFloatingNumbers] = useState<Array<{id: number, value: string, x: number, y: number}>>([]);
   const router = useRouter();
   
   const initialText = "What's Stopping You?";
+  
+  // Generate floating numbers for casino effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (phase === 'casino' || phase === 'donation' || phase === 'ask') {
+        const casinoElements = ['🎰', '💰', '🎲', '💎', '🎯', '🃏', '🎊', '🎉'];
+        const newNumber = {
+          id: Date.now() + Math.random(),
+          value: Math.random() > 0.7 ? `+${Math.floor(Math.random() * 100)}` : casinoElements[Math.floor(Math.random() * casinoElements.length)],
+          x: Math.random() * 100,
+          y: Math.random() * 100
+        };
+        setFloatingNumbers(prev => [...prev.slice(-8), newNumber]);
+      }
+    }, 1200);
+    
+    return () => clearInterval(interval);
+  }, [phase]);
   
   useEffect(() => {
     const sequence = async () => {
@@ -29,23 +48,29 @@ export default function Home() {
       setPhase('complete');
       
       // Wait before fade out
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Fade out
       setPhase('fadeOut');
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Show MONEY
-      setPhase('money');
+      // Show CASINO
+      setPhase('casino');
+      
+      // Wait before showing DONATION
+      await new Promise(resolve => setTimeout(resolve, 3500));
+      
+      // Show DONATION
+      setPhase('donation');
       
       // Wait before showing ASK
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 4000));
       
       // Show ASK
       setPhase('ask');
       
       // Wait before showing navbar
-      await new Promise(resolve => setTimeout(resolve, 6000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       // Show navbar
       setShowNavbar(true);
@@ -79,14 +104,26 @@ export default function Home() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2, duration: 0.6 }}
-                className="text-2xl font-bold text-white cursor-pointer"
+                className="text-2xl font-bold text-white cursor-pointer relative"
                 onClick={() => handleNavClick('/')}
                 style={{
                   fontFamily: 'system-ui, -apple-system, sans-serif',
                   fontWeight: 900,
                 }}
               >
-                WhatsStoppingYou
+                <span className="relative z-10">WhatsStoppingYou</span>
+                <motion.div
+                  className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg opacity-20 blur"
+                  animate={{
+                    opacity: [0.2, 0.4, 0.2],
+                    scale: [1, 1.05, 1],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                />
               </motion.div>
               
               {/* Navigation Items */}
@@ -97,7 +134,7 @@ export default function Home() {
                 className="flex items-center gap-8"
               >
                 <motion.button
-                  onClick={() => handleNavClick('/help')}
+                  onClick={() => handleNavClick('/campaigns')}
                   className="text-lg font-semibold text-white/80 hover:text-white transition-colors duration-300 relative group"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -106,9 +143,9 @@ export default function Home() {
                     fontWeight: 600,
                   }}
                 >
-                  HELP
+                  CAMPAIGNS
                   <motion.div
-                    className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"
+                    className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 group-hover:w-full transition-all duration-300"
                     whileHover={{ width: '100%' }}
                   />
                 </motion.button>
@@ -125,58 +162,56 @@ export default function Home() {
                 >
                   WHY
                   <motion.div
-                    className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"
+                    className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 group-hover:w-full transition-all duration-300"
                     whileHover={{ width: '100%' }}
                   />
                 </motion.button>
               </motion.div>
-        </div>
+            </div>
           </motion.nav>
         )}
       </AnimatePresence>
 
-      {/* Elegant Animated Background */}
+      {/* Consistent Moving Background */}
       <div className="absolute inset-0">
-        {/* Pure black base */}
+        {/* Deep space black base */}
         <div className="absolute inset-0 bg-black" />
         
-        {/* Subtle animated accent overlays */}
+        {/* Consistent casino-themed animated background */}
         <motion.div
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0 opacity-15"
+          style={{
+            background: "radial-gradient(circle at 30% 70%, rgba(255, 215, 0, 0.2) 0%, transparent 50%), radial-gradient(circle at 70% 30%, rgba(255, 20, 147, 0.15) 0%, transparent 50%), radial-gradient(circle at 20% 20%, rgba(138, 43, 226, 0.1) 0%, transparent 50%)"
+          }}
           animate={{
-            background: [
-              "radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)",
-              "radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.1) 0%, transparent 50%)",
-              "radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)",
-              "radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)"
-            ]
+            backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'],
           }}
           transition={{
-            duration: 12,
+            duration: 20,
             repeat: Infinity,
-            ease: "easeInOut"
+            ease: "linear"
           }}
         />
         
-        {/* Minimal floating orbs */}
-        {[...Array(4)].map((_, i) => (
+        {/* Floating casino orbs that move consistently */}
+        {[...Array(8)].map((_, i) => (
           <motion.div
-            key={`orb-${i}`}
-            className="absolute rounded-full bg-white/3 backdrop-blur-sm"
+            key={`casino-orb-${i}`}
+            className="absolute rounded-full bg-gradient-to-br from-yellow-400/10 to-pink-500/10 backdrop-blur-sm border border-white/5"
             style={{
-              width: `${Math.random() * 150 + 80}px`,
-              height: `${Math.random() * 150 + 80}px`,
+              width: `${Math.random() * 80 + 40}px`,
+              height: `${Math.random() * 80 + 40}px`,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
             }}
             animate={{
-              x: [0, Math.random() * 60 - 30, 0],
-              y: [0, Math.random() * 60 - 30, 0],
-              scale: [1, 1.05, 1],
-              opacity: [0.05, 0.1, 0.05],
+              x: [0, Math.random() * 200 - 100, 0],
+              y: [0, Math.random() * 200 - 100, 0],
+              scale: [1, 1.3, 1],
+              opacity: [0.1, 0.3, 0.1],
             }}
             transition={{
-              duration: Math.random() * 15 + 20,
+              duration: Math.random() * 15 + 10,
               repeat: Infinity,
               ease: "easeInOut",
               delay: Math.random() * 5
@@ -184,33 +219,32 @@ export default function Home() {
           />
         ))}
         
-        {/* Subtle particles */}
-        {[...Array(12)].map((_, i) => (
-          <motion.div
-            key={`particle-${i}`}
-            className="absolute w-px h-px bg-white/60 rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -40, 0],
-              opacity: [0, 0.6, 0],
-            }}
-            transition={{
-              duration: Math.random() * 5 + 4,
-              repeat: Infinity,
-              ease: "easeOut",
-              delay: Math.random() * 8
-            }}
-          />
-        ))}
+        {/* Floating casino elements */}
+        <AnimatePresence>
+          {floatingNumbers.map((item) => (
+            <motion.div
+              key={item.id}
+              className="absolute text-2xl font-bold pointer-events-none emoji-preserve"
+              style={{
+                left: `${item.x}%`,
+                top: `${item.y}%`,
+                color: item.value.includes('+') ? '#fbbf24' : 'initial',
+              }}
+              initial={{ opacity: 0, scale: 0.5, y: 20 }}
+              animate={{ opacity: 0.6, scale: 1, y: -150 }}
+              exit={{ opacity: 0, scale: 0.5, y: -300 }}
+              transition={{ duration: 4, ease: "easeOut" }}
+            >
+              {item.value}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
       
       <div className="relative text-center z-10">
         <AnimatePresence mode="wait">
           {/* Initial Question */}
-          {phase !== 'money' && phase !== 'ask' && (
+          {phase !== 'casino' && phase !== 'donation' && phase !== 'ask' && (
             <motion.div
               key="question"
               initial={{ opacity: 0 }}
@@ -264,43 +298,55 @@ export default function Home() {
             </motion.div>
           )}
           
-          {/* MONEY Text */}
-          {phase === 'money' && (
+          {/* CASINO Text - Story: The excitement begins */}
+          {phase === 'casino' && (
             <motion.div
-              key="money"
-              initial={{ opacity: 0, scale: 0.3, rotateX: -90, y: 100 }}
-              animate={{ opacity: 1, scale: 1, rotateX: 0, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: -50 }}
+              key="casino"
+              initial={{ opacity: 0, scale: 0.3, rotateY: -90, y: 100 }}
+              animate={{ opacity: 1, scale: 1, rotateY: 0, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, x: -100 }}
               transition={{
                 type: "spring",
                 damping: 20,
                 stiffness: 300,
-                duration: 1.2
+                duration: 1.5
               }}
               className="relative"
             >
               <div className="relative">
-                {/* Main MONEY text */}
+                {/* Main CASINO text */}
                 <motion.h1 
-                  className="text-7xl md:text-9xl lg:text-[12rem] font-black bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 bg-clip-text text-transparent"
+                  className="text-6xl md:text-8xl lg:text-[10rem] font-black bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 bg-clip-text text-transparent"
                   style={{
                     fontFamily: 'system-ui, -apple-system, sans-serif',
                     fontWeight: 900,
                     letterSpacing: '-0.05em'
                   }}
-                >
-                  MONEY
-                </motion.h1>
-                
-                {/* Subtle glow */}
-                <motion.div
-                  className="absolute inset-0 text-7xl md:text-9xl lg:text-[12rem] font-black text-yellow-400 opacity-10 blur-2xl"
                   animate={{
-                    scale: [1, 1.02, 1],
-                    opacity: [0.1, 0.2, 0.1]
+                    textShadow: [
+                      '0 0 20px rgba(255,215,0,0.3)',
+                      '0 0 40px rgba(255,20,147,0.4)',
+                      '0 0 20px rgba(255,215,0,0.3)'
+                    ]
                   }}
                   transition={{
-                    duration: 3,
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <span className="emoji-preserve">🎰</span> CASINO
+                </motion.h1>
+                
+                {/* Neon glow effect */}
+                <motion.div
+                  className="absolute inset-0 text-6xl md:text-8xl lg:text-[10rem] font-black text-yellow-400 opacity-20 blur-2xl"
+                  animate={{
+                    scale: [1, 1.05, 1],
+                    opacity: [0.2, 0.4, 0.2]
+                  }}
+                  transition={{
+                    duration: 2,
                     repeat: Infinity,
                     ease: "easeInOut"
                   }}
@@ -310,46 +356,148 @@ export default function Home() {
                     letterSpacing: '-0.05em'
                   }}
                 >
-                  MONEY
+                  <span className="emoji-preserve">🎰</span> CASINO
                 </motion.div>
                 
-                {/* Elegant sparkles */}
-                {[...Array(5)].map((_, i) => (
+                {/* Casino symbols */}
+                {['💰', '🎲', '🃏', '💎', '🎯'].map((symbol, i) => (
                   <motion.div
                     key={i}
-                    className="absolute w-2 h-2 bg-yellow-400 rounded-full"
+                    className="absolute text-4xl emoji-preserve"
                     style={{
-                      left: `${30 + Math.random() * 40}%`,
-                      top: `${30 + Math.random() * 40}%`,
+                      left: `${20 + (i * 15)}%`,
+                      top: `${20 + (i % 2) * 60}%`,
                     }}
                     animate={{
-                      y: [0, -20, 0],
-                      opacity: [0, 1, 0],
-                      scale: [0, 1, 0]
+                      y: [0, -30, 0],
+                      rotate: [0, 360],
+                      opacity: [0.6, 1, 0.6],
+                      scale: [1, 1.2, 1]
                     }}
                     transition={{
-                      duration: 2,
+                      duration: 3,
                       repeat: Infinity,
                       ease: "easeInOut",
-                      delay: i * 0.4
+                      delay: i * 0.5
                     }}
-                  />
+                  >
+                    {symbol}
+                  </motion.div>
                 ))}
               </div>
               
-              {/* Subtitle */}
+              {/* Story context */}
               <motion.p
-                className="text-xl md:text-2xl text-white/80 mt-8 font-medium"
+                className="text-lg md:text-xl text-white/70 mt-8 font-medium"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1, duration: 0.8 }}
               >
-                The only thing between you and your dreams
+                Where every pledge becomes a chance to win
               </motion.p>
             </motion.div>
           )}
           
-          {/* ASK Section */}
+          {/* DONATION Text - Story: The heart of the platform */}
+          {phase === 'donation' && (
+            <motion.div
+              key="donation"
+              initial={{ opacity: 0, scale: 0.3, rotateY: 90, y: 100 }}
+              animate={{ opacity: 1, scale: 1, rotateY: 0, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, x: 100 }}
+              transition={{
+                type: "spring",
+                damping: 20,
+                stiffness: 300,
+                duration: 1.5
+              }}
+              className="relative"
+            >
+              <div className="relative">
+                {/* Main DONATION text */}
+                <motion.h1 
+                  className="text-5xl md:text-7xl lg:text-[8rem] font-black bg-gradient-to-r from-green-400 via-blue-500 to-purple-500 bg-clip-text text-transparent"
+                  style={{
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontWeight: 900,
+                    letterSpacing: '-0.05em'
+                  }}
+                  animate={{
+                    textShadow: [
+                      '0 0 20px rgba(34,197,94,0.3)',
+                      '0 0 40px rgba(59,130,246,0.4)',
+                      '0 0 20px rgba(34,197,94,0.3)'
+                    ]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <span className="emoji-preserve">💝</span> DONATION
+                </motion.h1>
+                
+                {/* Glow effect */}
+                <motion.div
+                  className="absolute inset-0 text-5xl md:text-7xl lg:text-[8rem] font-black text-green-400 opacity-20 blur-2xl"
+                  animate={{
+                    scale: [1, 1.05, 1],
+                    opacity: [0.2, 0.4, 0.2]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  style={{
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontWeight: 900,
+                    letterSpacing: '-0.05em'
+                  }}
+                >
+                  <span className="emoji-preserve">💝</span> DONATION
+                </motion.div>
+                
+                {/* Heart symbols */}
+                {['💖', '🎁', '✨', '🌟', '💫'].map((symbol, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute text-3xl emoji-preserve"
+                    style={{
+                      left: `${15 + (i * 17)}%`,
+                      top: `${30 + (i % 2) * 40}%`,
+                    }}
+                    animate={{
+                      y: [0, -20, 0],
+                      opacity: [0.7, 1, 0.7],
+                      scale: [1, 1.3, 1]
+                    }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: i * 0.3
+                    }}
+                  >
+                    {symbol}
+                  </motion.div>
+                ))}
+              </div>
+              
+              {/* Story context */}
+              <motion.p
+                className="text-lg md:text-xl text-white/70 mt-8 font-medium"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1, duration: 0.8 }}
+              >
+                Supporting dreams while building community rewards
+              </motion.p>
+            </motion.div>
+          )}
+          
+          {/* ASK Section - Story: The call to action */}
           {phase === 'ask' && (
             <motion.div
               key="ask"
@@ -369,17 +517,17 @@ export default function Home() {
                     fontWeight: 900,
                   }}
                 >
-                  Just
+                  So
                 </motion.span>
                 
                 <motion.button
                   onClick={handleAskClick}
-                  className="text-4xl md:text-6xl lg:text-7xl font-bold px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl border-2 border-white/20 backdrop-blur-sm hover:border-white/40 transition-all duration-300 shadow-2xl hover:shadow-purple-500/25"
+                  className="text-4xl md:text-6xl lg:text-7xl font-bold px-8 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white rounded-2xl border-2 border-white/20 backdrop-blur-sm hover:border-white/40 transition-all duration-300 shadow-2xl hover:shadow-purple-500/25 relative overflow-hidden"
                   initial={{ opacity: 0, x: 30, scale: 0.9 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   whileHover={{ 
                     scale: 1.05,
-                    boxShadow: "0 0 40px rgba(168, 85, 247, 0.4)"
+                    boxShadow: "0 0 60px rgba(168, 85, 247, 0.6)"
                   }}
                   whileTap={{ scale: 0.95 }}
                   transition={{ 
@@ -394,19 +542,76 @@ export default function Home() {
                     fontWeight: 900,
                   }}
                 >
-                  ASK
+                  <span className="relative z-10">ASK</span>
+                  {/* Animated background */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 opacity-0"
+                    whileHover={{ opacity: 0.2 }}
+                    transition={{ duration: 0.3 }}
+                  />
+                  {/* Sparkle effect */}
+                  <motion.div
+                    className="absolute inset-0 opacity-0"
+                    whileHover={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {[...Array(5)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-2 h-2 bg-white rounded-full"
+                        style={{
+                          left: `${20 + i * 15}%`,
+                          top: `${20 + (i % 2) * 60}%`,
+                        }}
+                        animate={{
+                          opacity: [0, 1, 0],
+                          scale: [0, 1, 0],
+                        }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          delay: i * 0.2
+                        }}
+                      />
+                    ))}
+                  </motion.div>
                 </motion.button>
               </div>
               
-              {/* Subtle instruction */}
-              <motion.p
-                className="text-lg md:text-xl text-white/60 mt-8 font-medium"
+              {/* Story conclusion */}
+              <motion.div
+                className="mt-8 text-center"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, duration: 0.6 }}
               >
-                Click to create your campaign
-              </motion.p>
+                <p className="text-lg md:text-xl text-white/70 font-medium mb-4">
+                  Turn your dreams into reality with community power
+                </p>
+                <div className="flex justify-center gap-4 text-2xl">
+                  <motion.span
+                    className="emoji-preserve"
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    🎲
+                  </motion.span>
+                  <motion.span
+                    className="emoji-preserve"
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    💰
+                  </motion.span>
+                  <motion.span
+                    className="emoji-preserve"
+                    animate={{ rotate: [0, -10, 10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                  >
+                    🎯
+                  </motion.span>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
